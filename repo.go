@@ -108,13 +108,13 @@ func checkConfig(r repos) { /*{{{*/
 } /*}}}*/
 
 //post represent a poster instance
-type post struct {
+type post struct { /*{{{*/
 	mutex   sync.RWMutex
 	key     string
 	title   string
 	date    time.Time
 	content template.HTML
-}
+} /*}}}*/
 
 func newPost() *post { /*{{{*/
 	return new(post)

@@ -72,8 +72,8 @@ func TestLocalRepo(t *testing.T) { /*{{{*/
 					os.Remove(repoRoot + "3")
 				}()
 				expect := map[string]*localPost{
-					"1.md":        &localPost{path: filepath.Join(repoRoot, "1.md")},
-					"level1/1.md": &localPost{path: filepath.Join(repoRoot+"level1/", "1.md")},
+					"1.md":        newLocalPost(filepath.Join(repoRoot, "1.md")),
+					"level1/1.md": newLocalPost(filepath.Join(repoRoot+"level1/", "1.md")),
 				}
 				lr.update()
 				if err := checkLocalPosts(expect, lr.posts); err != nil {
@@ -86,9 +86,9 @@ func TestLocalRepo(t *testing.T) { /*{{{*/
 			prepare: func() {
 				os.Create(repoRoot + "1.md")
 				os.Mkdir(repoRoot+"level1", 0777)
-				lr.posts["1.md"] = &localPost{path: repoRoot + "1.md"}
-				lr.posts["2.md"] = &localPost{path: repoRoot + "2.md"}
-				lr.posts["level1/1.md"] = &localPost{path: repoRoot + "level1/" + "1.md"}
+				lr.posts["1.md"] = newLocalPost(repoRoot + "1.md")
+				lr.posts["2.md"] = newLocalPost(repoRoot + "2.md")
+				lr.posts["level1/1.md"] = newLocalPost(repoRoot + "level1/" + "1.md")
 			},
 			check: func() {
 				defer func() {
@@ -96,7 +96,7 @@ func TestLocalRepo(t *testing.T) { /*{{{*/
 					os.Remove(repoRoot + "level1")
 				}()
 				expect := map[string]*localPost{
-					"1.md": &localPost{path: filepath.Join(repoRoot, "1.md")},
+					"1.md": newLocalPost(filepath.Join(repoRoot, "1.md")),
 				}
 				lr.clean()
 				if err := checkLocalPosts(expect, lr.posts); err != nil {
@@ -122,12 +122,34 @@ func checkLocalPosts(expect, real map[string]*localPost) error { /*{{{*/
 			len(expect), len(real))
 	}
 	for k, v := range expect {
-		if *v != *real[k] {
+		if !isLocalPostEqual(v, real[k]) {
 			return fmt.Errorf("expect post %v but get %v\n", *v, *real[k])
 		}
 	}
 	return nil
 } /*}}}*/
+
+func isLocalPostEqual(expect, real *localPost) bool {
+	if expect.path != real.path {
+		return false
+	}
+	if !expect.lastUpdate.Equal(real.lastUpdate) {
+		return false
+	}
+	if expect.post.key != real.post.key {
+		return false
+	}
+	if expect.post.title != real.post.title {
+		return false
+	}
+	if !expect.post.date.Equal(real.post.date) {
+		return false
+	}
+	if expect.post.content != real.post.content {
+		return false
+	}
+	return true
+}
 
 func TestLocalPostUpdate(t *testing.T) { /*{{{*/
 	type Expect struct {

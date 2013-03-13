@@ -141,7 +141,7 @@ func (lp *localPost) update() error { /*{{{*/
 		if err := lp.Update(file); err != nil {
 			return err
 		}
-
+		lp.lastUpdate = ut
 		//update the content in dataCenter
 		if err := Add(lp); err != nil {
 			log.Printf("update a local post failed: %s\n", err)
