@@ -1,37 +1,29 @@
 package storage
 
 import (
-	"crypto/md5"
 	"errors"
-	"fmt"
-	"github.com/russross/blackfriday"
 	"html/template"
-	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 )
 
-func init() {
+func init() { /*{{{*/
 	RegisterRepoType("local", NewLocalRepo)
-}
+} /*}}}*/
 
 type localRepo struct { /*{{{*/
-	exitCh chan bool
-	root   string
-	posts  map[string]*localPost
+	root  string
+	posts map[string]*localPost
 } /*}}}*/
 
 func NewLocalRepo(root string) Repository { /*{{{*/
 	return &localRepo{
-		exitCh: make(chan bool),
-		root:   root,
-		posts:  make(map[string]*localPost),
+		root:  root,
+		posts: make(map[string]*localPost),
 	}
 } /*}}}*/
 
@@ -45,27 +37,18 @@ func (lr *localRepo) Setup() error { /*{{{*/
 	if !fi.IsDir() {
 		return errors.New("you can't specify a file as a repo root")
 	}
-	go lr.watch()
 	return nil
 } /*}}}*/
 
 func (lr *localRepo) Uninstall() { /*{{{*/
-	lr.exitCh <- true
+	//nothing to do
 } /*}}}*/
 
-func (lr *localRepo) watch() { /*{{{*/
-	timer := time.Tick(1 * time.Second)
-	for {
-		select {
-		case <-lr.exitCh:
-			return
-		case <-timer:
-			//delete the removed files
-			lr.clean()
-			//add newer post and update the exist post
-			lr.update()
-		}
-	}
+func (lr *localRepo) Refresh() { /*{{{*/
+	//delete the removed files
+	lr.clean()
+	//add newer post and update the exist post
+	lr.update()
 } /*}}}*/
 
 //clean the noexist posts
@@ -101,11 +84,15 @@ func (lr *localRepo) update() { /*{{{*/
 		if !found {
 			lp := newLocalPost(path)
 			lr.posts[relPath] = lp
+			if err := lp.Update(); err != nil {
+				log.Printf("update local post(%s) failed: %s\n", lp.path, err)
+			}
 			return nil
 		}
 		//update a exist one
-		var updater Updater = post
-		updater.Update()
+		if err := post.Update(); err != nil {
+			log.Printf("update local post(%s) failed: %s\n", post.path, err)
+		}
 		return nil
 	}); err != nil {
 		log.Printf("update local repo(%s) error: %s\n",
@@ -146,7 +133,31 @@ func newLocalPost(path string) *localPost { /*{{{*/
 	}
 } /*}}}*/
 
-//implement Updater
+//implement Poster
+func (lp *localPost) Date() template.HTML { /*{{{*/
+	lp.mutex.RLock()
+	defer lp.mutex.RUnlock()
+	return template.HTML(lp.date.Format(TimePattern))
+} /*}}}*/
+
+func (lp *localPost) Content() template.HTML { /*{{{*/
+	lp.mutex.RLock()
+	defer lp.mutex.RUnlock()
+	return lp.content
+} /*}}}*/
+
+func (lp *localPost) Title() template.HTML { /*{{{*/
+	lp.mutex.RLock()
+	defer lp.mutex.RUnlock()
+	return template.HTML(lp.title)
+} /*}}}*/
+
+func (lp *localPost) Key() string { /*{{{*/
+	lp.mutex.RLock()
+	defer lp.mutex.RUnlock()
+	return lp.key
+} /*}}}*/
+
 func (lp *localPost) Update() error { /*{{{*/
 	file, err := os.Open(lp.path)
 	if err != nil {
@@ -174,66 +185,4 @@ func (lp *localPost) Update() error { /*{{{*/
 		}
 	}
 	return nil
-} /*}}}*/
-
-func generateAll(file *os.File) (key, title string, date time.Time, content template.HTML, err error) { /*{{{*/
-	c, e := ioutil.ReadAll(file)
-	if e != nil {
-		err = e
-		return
-	}
-	//generate title and date
-	firstLineIndex := strings.Index(string(c), "\n")
-	if firstLineIndex == -1 {
-		err = errors.New("generateAll: there must be at least one line\n")
-		return
-	}
-	firstLine := strings.TrimSpace(string(c[:firstLineIndex]))
-	remain := strings.TrimSpace(string(c[firstLineIndex+1:]))
-	sepIndex := strings.Index(firstLine, TitleAndDateSeperator)
-	if sepIndex == -1 {
-		err = errors.New("generateAll: can't find seperator for title and date\n")
-		return
-	}
-	t, e := time.Parse(TimePattern, strings.TrimSpace(firstLine[sepIndex+1:]))
-	if e != nil {
-		err = e
-		return
-	}
-
-	//generate key
-	h := md5.New()
-	io.WriteString(h, string(c))
-	key = fmt.Sprintf("%x", h.Sum(nil))
-
-	title = strings.TrimSpace(firstLine[:sepIndex])
-	date = t
-	content = template.HTML(blackfriday.MarkdownCommon([]byte(remain)))
-	return
-} /*}}}*/
-
-//implement controllers.Poster
-func (lp *localPost) Date() template.HTML { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return template.HTML(lp.date.Format(TimePattern))
-} /*}}}*/
-
-func (lp *localPost) Content() template.HTML { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return lp.content
-} /*}}}*/
-
-func (lp *localPost) Title() template.HTML { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return template.HTML(lp.title)
-} /*}}}*/
-
-//implement Keyer
-func (lp *localPost) Key() string { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return lp.key
 } /*}}}*/
