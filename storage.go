@@ -11,8 +11,8 @@ type storage struct { /*{{{*/
 	requestCh chan *request //for outcoming request
 	closeCh   chan bool     //for exit
 
-	waiter sync.WaitGroup         //count the reference
-	data   map[string]interface{} //internal data storage
+	waiter sync.WaitGroup    //count the reference
+	data   map[string]Poster //internal data storage
 } /*}}}*/
 
 func (d *storage) serve() { /*{{{*/
@@ -50,7 +50,7 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 				d.waiter.Wait()
 			}
 			//add or update it, here only myself refer the map
-			d.data[key] = arg
+			d.data[key] = arg.(Poster)
 			return nil
 		})
 		return
@@ -98,7 +98,7 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 
 func (d *storage) reset() { /*{{{*/
 	d.waiter = sync.WaitGroup{}
-	d.data = make(map[string]interface{})
+	d.data = make(map[string]Poster)
 } /*}}}*/
 
 func (d *storage) find(key string) interface{} { /*{{{*/

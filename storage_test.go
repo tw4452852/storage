@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"testing"
 )
 
@@ -14,9 +15,21 @@ type entry struct {
 	data string
 }
 
-//implement Keyer interface
+//implement Poster interface
 func (e *entry) Key() string {
 	return e.data
+}
+func (e *entry) Date() template.HTML {
+	return template.HTML("1988-11-13")
+}
+func (e *entry) Content() template.HTML {
+	return template.HTML("hello test content")
+}
+func (e *entry) Title() template.HTML {
+	return template.HTML("hello test title")
+}
+func (e *entry) Update() error {
+	return nil
 }
 
 type invalidEntry struct {
@@ -62,45 +75,6 @@ func TestAdd(t *testing.T) { /*{{{*/
 		},
 		{
 			nil,
-			[]interface{}{inents[0]},
-			noKeyerErr,
-			func(*Result) error {
-				if dataCenter.find(inents[0].data) != nil {
-					return errors.New("add invalid one failed\n")
-				}
-				return nil
-			},
-		},
-		{
-			nil,
-			[]interface{}{inents[0], ents[0]},
-			noKeyerErr,
-			func(*Result) error {
-				if dataCenter.find(inents[1].data) != nil {
-					return errors.New("invalid+valid add: invaled is found\n")
-				}
-				if dataCenter.find(ents[0].data) != nil {
-					return errors.New("invalid+valid add: valied is found\n")
-				}
-				return nil
-			},
-		},
-		{
-			nil,
-			[]interface{}{ents[0], inents[0]},
-			noKeyerErr,
-			func(*Result) error {
-				if dataCenter.find(ents[0].data) != ents[0] {
-					return errors.New("valid+invalid add: valied is not found\n")
-				}
-				if dataCenter.find(inents[0].data) == inents[0] {
-					return errors.New("valid+invalid add: invalied is found\n")
-				}
-				return nil
-			},
-		},
-		{
-			nil,
 			[]interface{}{ents[1], ents[2]},
 			nil,
 			func(*Result) error {
@@ -121,7 +95,11 @@ func TestAdd(t *testing.T) { /*{{{*/
 				t.Fatal(err)
 			}
 		}
-		if e := matchError(c.err, Add(c.input...)); e != nil {
+		inputs := make([]Poster, len(c.input))
+		for i, p := range c.input {
+			inputs[i] = p.(Poster)
+		}
+		if e := matchError(c.err, Add(inputs...)); e != nil {
 			t.Fatal(e)
 		}
 		if c.checker != nil {
@@ -146,48 +124,6 @@ func TestUpdate(t *testing.T) { /*{{{*/
 				return nil
 			},
 		},
-		{
-			nil,
-			[]interface{}{inents[0], inents[1]},
-			noKeyerErr,
-			func(*Result) error {
-				if dataCenter.find(inents[0].data) != nil {
-					return errors.New("update invalid+invalid: find first\n")
-				}
-				if dataCenter.find(inents[1].data) != nil {
-					return errors.New("update invalid+invalid: find second\n")
-				}
-				return nil
-			},
-		},
-		{
-			nil,
-			[]interface{}{inents[0], ents[1]},
-			noKeyerErr,
-			func(*Result) error {
-				if dataCenter.find(inents[0].data) != nil {
-					return errors.New("update invalid+valid: find first\n")
-				}
-				if dataCenter.find(ents[1].data) != nil {
-					return errors.New("update invalid+valid: find second\n")
-				}
-				return nil
-			},
-		},
-		{
-			nil,
-			[]interface{}{ents[0], inents[1]},
-			noKeyerErr,
-			func(*Result) error {
-				if dataCenter.find(ents[0].data) != ents[0] {
-					return errors.New("update valid+invalid: can't find first\n")
-				}
-				if dataCenter.find(inents[1].data) == inents[1] {
-					return errors.New("update valid+invalid: find second\n")
-				}
-				return nil
-			},
-		},
 	}
 	for _, c := range cases {
 		dataCenter.reset()
@@ -196,7 +132,11 @@ func TestUpdate(t *testing.T) { /*{{{*/
 				t.Fatal(err)
 			}
 		}
-		if e := matchError(c.err, Add(c.input...)); e != nil {
+		inputs := make([]Poster, len(c.input))
+		for i, p := range c.input {
+			inputs[i] = p.(Poster)
+		}
+		if e := matchError(c.err, Add(inputs...)); e != nil {
 			t.Fatal(e)
 		}
 		if c.checker != nil {

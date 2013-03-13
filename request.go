@@ -18,11 +18,14 @@ type request struct { /*{{{*/
 //Add add something into the dataCenter
 //If the things are exist, update it
 //Some internal error will be returned
-func Add(args ...interface{}) error { /*{{{*/
+func Add(args ...Poster) error { /*{{{*/
 	r := &request{
 		cmd:  ADD,
-		args: args,
+		args: make([]interface{}, len(args)),
 		err:  make(chan error),
+	}
+	for i, p := range args {
+		r.args[i] = p
 	}
 	dataCenter.requestCh <- r
 	return <-r.err

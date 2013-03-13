@@ -177,12 +177,13 @@ func (lp *localPost) Update() error { /*{{{*/
 		lp.key, lp.title, lp.date, lp.content, lp.lastUpdate =
 			key, title, date, content, ut
 		lp.mutex.Unlock()
-		log.Printf("update a local post: path(%s), key(%x), date(%s), lastUpdate(%s)\n",
-			lp.path, lp.Key(), lp.Date(), lp.lastUpdate)
+
 		//update the content in dataCenter
 		if err := Add(lp); err != nil {
 			log.Printf("update a local post failed: %s\n", err)
 		}
+		log.Printf("update a local post: path(%s), key(%x), date(%s), lastUpdate(%s)\n",
+			lp.path, lp.Key(), lp.Date(), lp.lastUpdate)
 	}
 	return nil
 } /*}}}*/

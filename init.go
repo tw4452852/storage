@@ -8,7 +8,7 @@ import (
 func Init() { /*{{{*/
 	dataCenter = &storage{
 		requestCh: make(chan *request),
-		data:      make(map[string]interface{}),
+		data:      make(map[string]Poster),
 	}
 	go dataCenter.serve()
 	initRepos()
