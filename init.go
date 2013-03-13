@@ -1,5 +1,9 @@
 package storage
 
+import (
+	"html/template"
+)
+
 //Init init the dataCenter and repositories
 func Init() { /*{{{*/
 	dataCenter = &storage{
@@ -22,3 +26,17 @@ const (
 type Releaser interface { /*{{{*/
 	Release() string
 } /*}}}*/
+
+//Keyer represent a key to post
+type Keyer interface {
+	Key() string
+}
+
+//Poster represet a post
+type Poster interface {
+	Date() template.HTML
+	Content() template.HTML
+	Title() template.HTML
+	Keyer
+	Update() error
+}

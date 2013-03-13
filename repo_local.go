@@ -22,16 +22,14 @@ func init() {
 }
 
 type localRepo struct { /*{{{*/
-	exitCh chan bool
-	root   string
-	posts  map[string]*localPost
+	root  string
+	posts map[string]*localPost
 } /*}}}*/
 
 func NewLocalRepo(root string) Repository { /*{{{*/
 	return &localRepo{
-		exitCh: make(chan bool),
-		root:   root,
-		posts:  make(map[string]*localPost),
+		root:  root,
+		posts: make(map[string]*localPost),
 	}
 } /*}}}*/
 
@@ -45,27 +43,18 @@ func (lr *localRepo) Setup() error { /*{{{*/
 	if !fi.IsDir() {
 		return errors.New("you can't specify a file as a repo root")
 	}
-	go lr.watch()
 	return nil
 } /*}}}*/
 
 func (lr *localRepo) Uninstall() { /*{{{*/
-	lr.exitCh <- true
+	//nothing to do
 } /*}}}*/
 
-func (lr *localRepo) watch() { /*{{{*/
-	timer := time.Tick(1 * time.Second)
-	for {
-		select {
-		case <-lr.exitCh:
-			return
-		case <-timer:
-			//delete the removed files
-			lr.clean()
-			//add newer post and update the exist post
-			lr.update()
-		}
-	}
+func (lr *localRepo) Refresh() { /*{{{*/
+	//delete the removed files
+	lr.clean()
+	//add newer post and update the exist post
+	lr.update()
 } /*}}}*/
 
 //clean the noexist posts
@@ -104,8 +93,8 @@ func (lr *localRepo) update() { /*{{{*/
 			return nil
 		}
 		//update a exist one
-		var updater Updater = post
-		updater.Update()
+		var poster Poster = post
+		poster.Update()
 		return nil
 	}); err != nil {
 		log.Printf("update local repo(%s) error: %s\n",
@@ -146,7 +135,31 @@ func newLocalPost(path string) *localPost { /*{{{*/
 	}
 } /*}}}*/
 
-//implement Updater
+//implement Poster
+func (lp *localPost) Date() template.HTML { /*{{{*/
+	lp.mutex.RLock()
+	defer lp.mutex.RUnlock()
+	return template.HTML(lp.date.Format(TimePattern))
+} /*}}}*/
+
+func (lp *localPost) Content() template.HTML { /*{{{*/
+	lp.mutex.RLock()
+	defer lp.mutex.RUnlock()
+	return lp.content
+} /*}}}*/
+
+func (lp *localPost) Title() template.HTML { /*{{{*/
+	lp.mutex.RLock()
+	defer lp.mutex.RUnlock()
+	return template.HTML(lp.title)
+} /*}}}*/
+
+func (lp *localPost) Key() string { /*{{{*/
+	lp.mutex.RLock()
+	defer lp.mutex.RUnlock()
+	return lp.key
+} /*}}}*/
+
 func (lp *localPost) Update() error { /*{{{*/
 	file, err := os.Open(lp.path)
 	if err != nil {
@@ -210,30 +223,4 @@ func generateAll(file *os.File) (key, title string, date time.Time, content temp
 	date = t
 	content = template.HTML(blackfriday.MarkdownCommon([]byte(remain)))
 	return
-} /*}}}*/
-
-//implement controllers.Poster
-func (lp *localPost) Date() template.HTML { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return template.HTML(lp.date.Format(TimePattern))
-} /*}}}*/
-
-func (lp *localPost) Content() template.HTML { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return lp.content
-} /*}}}*/
-
-func (lp *localPost) Title() template.HTML { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return template.HTML(lp.title)
-} /*}}}*/
-
-//implement Keyer
-func (lp *localPost) Key() string { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return lp.key
 } /*}}}*/

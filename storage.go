@@ -26,11 +26,6 @@ func (d *storage) serve() { /*{{{*/
 	}
 } /*}}}*/
 
-//Keyer used for generate the key in the map
-type Keyer interface { /*{{{*/
-	Key() string
-} /*}}}*/
-
 func (d *storage) handleRequest(req *request) { /*{{{*/
 	loopArgs := func(action func(key string, arg interface{}) error) error {
 		for _, arg := range req.args {

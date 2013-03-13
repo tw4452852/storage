@@ -11,13 +11,10 @@ import (
 type Repository interface { /*{{{*/
 	//used for setup a repository
 	Setup() error
+	//used for updating a repository
+	Refresh()
 	//used for uninstall a repostory
 	Uninstall()
-} /*}}}*/
-
-//used for udpate a post in a repository
-type Updater interface { /*{{{*/
-	Update() error
 } /*}}}*/
 
 //used for Init a repository with a root path
@@ -48,7 +45,7 @@ func (rs repos) refresh(cfg *Configs) { /*{{{*/
 		kind := c.Type
 		root := c.Root
 		key := kind + "-" + root
-		_, found := rs[key]
+		r, found := rs[key]
 		if !found {
 			if initF, supported := supportedRepoTypes[kind]; supported {
 				repo := initF(root)
@@ -58,12 +55,15 @@ func (rs repos) refresh(cfg *Configs) { /*{{{*/
 				}
 				log.Printf("add a repo(%q)\n", key)
 				rs[key] = repo
+				//refresh when init a repo
+				repo.Refresh()
 			} else {
 				log.Printf("add repo: type(%s) isn't supported yet\n",
 					kind)
 			}
 			continue
 		}
+		r.Refresh()
 		refreshed[key] = true
 	}
 
