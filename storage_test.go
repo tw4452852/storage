@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"testing"
 )
 
@@ -28,7 +29,7 @@ func (e *entry) Content() template.HTML {
 func (e *entry) Title() template.HTML {
 	return template.HTML("hello test title")
 }
-func (e *entry) Update() error {
+func (e *entry) Update(io.Reader) error {
 	return nil
 }
 

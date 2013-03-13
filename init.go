@@ -2,6 +2,7 @@ package storage
 
 import (
 	"html/template"
+	"io"
 )
 
 //Init init the dataCenter and repositories
@@ -38,5 +39,5 @@ type Poster interface { /*{{{*/
 	Content() template.HTML
 	Title() template.HTML
 	Keyer
-	Update() error
+	Update(io.Reader) error
 } /*}}}*/

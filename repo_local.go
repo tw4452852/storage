@@ -2,12 +2,10 @@ package storage
 
 import (
 	"errors"
-	"html/template"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sync"
 	"time"
 )
 
@@ -84,13 +82,13 @@ func (lr *localRepo) update() { /*{{{*/
 		if !found {
 			lp := newLocalPost(path)
 			lr.posts[relPath] = lp
-			if err := lp.Update(); err != nil {
+			if err := lp.update(); err != nil {
 				log.Printf("update local post(%s) failed: %s\n", lp.path, err)
 			}
 			return nil
 		}
 		//update a exist one
-		if err := post.Update(); err != nil {
+		if err := post.update(); err != nil {
 			log.Printf("update local post(%s) failed: %s\n", post.path, err)
 		}
 		return nil
@@ -117,48 +115,19 @@ func filetypeFilter(path string) (passed bool) { /*{{{*/
 
 //represet a local post
 type localPost struct { /*{{{*/
-	path string
-
-	mutex      sync.RWMutex
-	key        string
-	title      string
-	date       time.Time
-	content    template.HTML
+	path       string
 	lastUpdate time.Time
+	*post
 } /*}}}*/
 
 func newLocalPost(path string) *localPost { /*{{{*/
 	return &localPost{
 		path: path,
+		post: newPost(),
 	}
 } /*}}}*/
 
-//implement Poster
-func (lp *localPost) Date() template.HTML { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return template.HTML(lp.date.Format(TimePattern))
-} /*}}}*/
-
-func (lp *localPost) Content() template.HTML { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return lp.content
-} /*}}}*/
-
-func (lp *localPost) Title() template.HTML { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return template.HTML(lp.title)
-} /*}}}*/
-
-func (lp *localPost) Key() string { /*{{{*/
-	lp.mutex.RLock()
-	defer lp.mutex.RUnlock()
-	return lp.key
-} /*}}}*/
-
-func (lp *localPost) Update() error { /*{{{*/
+func (lp *localPost) update() error { /*{{{*/
 	file, err := os.Open(lp.path)
 	if err != nil {
 		return err
@@ -169,21 +138,16 @@ func (lp *localPost) Update() error { /*{{{*/
 		return err
 	}
 	if ut := fi.ModTime(); ut.After(lp.lastUpdate) {
-		key, title, date, content, err := generateAll(file)
-		if err != nil {
+		if err := lp.Update(file); err != nil {
 			return err
 		}
-		lp.mutex.Lock()
-		lp.key, lp.title, lp.date, lp.content, lp.lastUpdate =
-			key, title, date, content, ut
-		lp.mutex.Unlock()
 
 		//update the content in dataCenter
 		if err := Add(lp); err != nil {
 			log.Printf("update a local post failed: %s\n", err)
 		}
-		log.Printf("update a local post: path(%s), key(%x), date(%s), lastUpdate(%s)\n",
-			lp.path, lp.Key(), lp.Date(), lp.lastUpdate)
+		log.Printf("update a local post: path(%s), key(%x), date(%s)\n",
+			lp.path, lp.Key(), lp.Date())
 	}
 	return nil
 } /*}}}*/

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -106,38 +107,83 @@ func checkConfig(r repos) { /*{{{*/
 	panic("not reach")
 } /*}}}*/
 
-func generateAll(reader io.Reader) (key, title string, date time.Time, content template.HTML, err error) { /*{{{*/
+//post represent a poster instance
+type post struct {
+	mutex   sync.RWMutex
+	key     string
+	title   string
+	date    time.Time
+	content template.HTML
+}
+
+func newPost() *post { /*{{{*/
+	return new(post)
+} /*}}}*/
+
+//implement Poster
+func (p *post) Date() template.HTML { /*{{{*/
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	return template.HTML(p.date.Format(TimePattern))
+} /*}}}*/
+
+func (p *post) Content() template.HTML { /*{{{*/
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	return p.content
+} /*}}}*/
+
+func (p *post) Title() template.HTML { /*{{{*/
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	return template.HTML(p.title)
+} /*}}}*/
+
+func (p *post) Key() string { /*{{{*/
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	return p.key
+} /*}}}*/
+
+func (p *post) Update(reader io.Reader) error { /*{{{*/
 	c, e := ioutil.ReadAll(reader)
 	if e != nil {
-		err = e
-		return
+		return e
 	}
-	//generate title and date
+	//title
 	firstLineIndex := strings.Index(string(c), "\n")
 	if firstLineIndex == -1 {
-		err = errors.New("generateAll: there must be at least one line\n")
-		return
+		return errors.New("generateAll: there must be at least one line\n")
 	}
 	firstLine := strings.TrimSpace(string(c[:firstLineIndex]))
-	remain := strings.TrimSpace(string(c[firstLineIndex+1:]))
 	sepIndex := strings.Index(firstLine, TitleAndDateSeperator)
 	if sepIndex == -1 {
-		err = errors.New("generateAll: can't find seperator for title and date\n")
-		return
+		return errors.New("generateAll: can't find seperator for title and date\n")
 	}
+	title := strings.TrimSpace(firstLine[:sepIndex])
+
+	//content
+	remain := strings.TrimSpace(string(c[firstLineIndex+1:]))
+	content := template.HTML(blackfriday.MarkdownCommon([]byte(remain)))
+
+	//date
 	t, e := time.Parse(TimePattern, strings.TrimSpace(firstLine[sepIndex+1:]))
 	if e != nil {
-		err = e
-		return
+		return e
 	}
 
-	//generate key
+	//key
 	h := md5.New()
 	io.WriteString(h, string(c))
-	key = fmt.Sprintf("%x", h.Sum(nil))
+	key := fmt.Sprintf("%x", h.Sum(nil))
 
-	title = strings.TrimSpace(firstLine[:sepIndex])
-	date = t
-	content = template.HTML(blackfriday.MarkdownCommon([]byte(remain)))
-	return
+	//update all
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	p.key = key
+	p.title = title
+	p.date = t
+	p.content = content
+
+	return nil
 } /*}}}*/

@@ -228,7 +228,7 @@ func TestLocalPostUpdate(t *testing.T) { /*{{{*/
 			c.prepare()
 		}
 		lp := newLocalPost(c.path)
-		if err := matchError(c.updateErr, lp.Update()); err != nil {
+		if err := matchError(c.updateErr, lp.update()); err != nil {
 			return err
 		}
 		if c.updateErr != nil && c.expect == nil {
