@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -13,7 +14,7 @@ var (
 
 func init() {
 	if runtime.GOOS == "windows" {
-		pathNotFound = syscall.ENOTDIR
+		pathNotFound = errors.New("The system cannot find")
 	} else {
 		pathNotFound = syscall.ENOENT
 	}

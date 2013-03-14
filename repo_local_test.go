@@ -93,7 +93,7 @@ func TestLocalRepo(t *testing.T) { /*{{{*/
 			check: func() {
 				defer func() {
 					os.Remove(repoRoot + "1.md")
-					os.Remove(repoRoot + "level1")
+					os.RemoveAll(repoRoot + "level1")
 				}()
 				expect := map[string]*localPost{
 					"1.md": newLocalPost(filepath.Join(repoRoot, "1.md")),
@@ -123,6 +123,12 @@ func checkLocalPosts(expect, real map[string]*localPost) error { /*{{{*/
 	}
 	for k, v := range expect {
 		if !isLocalPostEqual(v, real[k]) {
+			if v == nil {
+				return errors.New("expect nil, but get non nil\n")
+			}
+			if real[k] == nil {
+				return errors.New("expect non nil, but get nil\n")
+			}
 			return fmt.Errorf("expect post %v but get %v\n", *v, *real[k])
 		}
 	}
@@ -130,25 +136,31 @@ func checkLocalPosts(expect, real map[string]*localPost) error { /*{{{*/
 } /*}}}*/
 
 func isLocalPostEqual(expect, real *localPost) bool {
-	if expect.path != real.path {
-		return false
+	if expect != nil && real != nil {
+		if expect.path != filepath.FromSlash(real.path) {
+			return false
+		}
+		if !expect.lastUpdate.Equal(real.lastUpdate) {
+			return false
+		}
+		if expect.post.key != real.post.key {
+			return false
+		}
+		if expect.post.title != real.post.title {
+			return false
+		}
+		if !expect.post.date.Equal(real.post.date) {
+			return false
+		}
+		if expect.post.content != real.post.content {
+			return false
+		}
+		return true
 	}
-	if !expect.lastUpdate.Equal(real.lastUpdate) {
-		return false
+	if expect == nil && real == nil {
+		return true
 	}
-	if expect.post.key != real.post.key {
-		return false
-	}
-	if expect.post.title != real.post.title {
-		return false
-	}
-	if !expect.post.date.Equal(real.post.date) {
-		return false
-	}
-	if expect.post.content != real.post.content {
-		return false
-	}
-	return true
+	return false
 }
 
 func TestLocalPostUpdate(t *testing.T) { /*{{{*/
