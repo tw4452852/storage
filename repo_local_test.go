@@ -9,7 +9,8 @@ import (
 	"testing"
 )
 
-const repoRoot = "testdata/localRepo/"
+var repoRoot = filepath.FromSlash(filepath.Join(os.Getenv("GOPATH"),
+	"src/github.com/tw4452852/storage/testdata/localRepo/"))
 
 func TestLocalSetup(t *testing.T) { /*{{{*/
 	cases := []struct {
@@ -55,25 +56,11 @@ func TestLocalRepo(t *testing.T) { /*{{{*/
 		check   func()
 	}{
 		{
-			prepare: func() {
-				os.Create(repoRoot + "1.md")
-				os.Create(repoRoot + "2.mkd")
-				os.Create(repoRoot + "3")
-				os.Mkdir(repoRoot+"level1/", 0777)
-				os.Create(repoRoot + "level1/" + "1.md")
-				os.Create(repoRoot + "level1/" + "2.mkd")
-				os.Create(repoRoot + "level1/" + "3")
-			},
+			prepare: nil,
 			check: func() {
-				defer func() {
-					os.RemoveAll(repoRoot + "level1/")
-					os.Remove(repoRoot + "1.md")
-					os.Remove(repoRoot + "2.mkd")
-					os.Remove(repoRoot + "3")
-				}()
 				expect := map[string]*localPost{
-					"1.md":        newLocalPost(filepath.Join(repoRoot, "1.md")),
-					"level1/1.md": newLocalPost(filepath.Join(repoRoot+"level1/", "1.md")),
+					"1.md": newLocalPost(filepath.Join(repoRoot, "1.md")),
+					"level1" + string(filepath.Separator) + "1.md": newLocalPost(filepath.Join(repoRoot, "level1/1.md")),
 				}
 				lr.update()
 				if err := checkLocalPosts(expect, lr.posts); err != nil {
@@ -84,19 +71,14 @@ func TestLocalRepo(t *testing.T) { /*{{{*/
 
 		{
 			prepare: func() {
-				os.Create(repoRoot + "1.md")
-				os.Mkdir(repoRoot+"level1", 0777)
-				lr.posts["1.md"] = newLocalPost(repoRoot + "1.md")
-				lr.posts["2.md"] = newLocalPost(repoRoot + "2.md")
-				lr.posts["level1/1.md"] = newLocalPost(repoRoot + "level1/" + "1.md")
+				lr.posts["1.md"] = newLocalPost(filepath.Join(repoRoot, "1.md"))
+				lr.posts["noexist.md"] = newLocalPost(filepath.Join(repoRoot, "noexist.md"))
+				lr.posts["level1/noexist.md"] = newLocalPost(filepath.Join(repoRoot, "level1/noexist.md"))
 			},
 			check: func() {
-				defer func() {
-					os.Remove(repoRoot + "1.md")
-					os.RemoveAll(repoRoot + "level1")
-				}()
 				expect := map[string]*localPost{
 					"1.md": newLocalPost(filepath.Join(repoRoot, "1.md")),
+					"level1" + string(filepath.Separator) + "1.md": newLocalPost(filepath.Join(repoRoot, "level1/1.md")),
 				}
 				lr.clean()
 				if err := checkLocalPosts(expect, lr.posts); err != nil {
@@ -118,50 +100,20 @@ func TestLocalRepo(t *testing.T) { /*{{{*/
 
 func checkLocalPosts(expect, real map[string]*localPost) error { /*{{{*/
 	if len(real) != len(expect) {
-		return fmt.Errorf("length of posts isn't equal: expect %d but get %d\n",
-			len(expect), len(real))
+		return fmt.Errorf("length of posts isn't equal: expect %v but get %v\n",
+			expect, real)
 	}
 	for k, v := range expect {
-		if !isLocalPostEqual(v, real[k]) {
-			if v == nil {
-				return errors.New("expect nil, but get non nil\n")
-			}
-			if real[k] == nil {
-				return errors.New("expect non nil, but get nil\n")
-			}
-			return fmt.Errorf("expect post %v but get %v\n", *v, *real[k])
+		r, found := real[k]
+		if !found {
+			return fmt.Errorf("can't find expect %v in real\n", *v)
+		}
+		if v.path != r.path {
+			return fmt.Errorf("want path %q, but get %q\n", v.path, r.path)
 		}
 	}
 	return nil
 } /*}}}*/
-
-func isLocalPostEqual(expect, real *localPost) bool {
-	if expect != nil && real != nil {
-		if expect.path != filepath.FromSlash(real.path) {
-			return false
-		}
-		if !expect.lastUpdate.Equal(real.lastUpdate) {
-			return false
-		}
-		if expect.post.key != real.post.key {
-			return false
-		}
-		if expect.post.title != real.post.title {
-			return false
-		}
-		if !expect.post.date.Equal(real.post.date) {
-			return false
-		}
-		if expect.post.content != real.post.content {
-			return false
-		}
-		return true
-	}
-	if expect == nil && real == nil {
-		return true
-	}
-	return false
-}
 
 func TestLocalPostUpdate(t *testing.T) { /*{{{*/
 	type Expect struct {
@@ -184,16 +136,16 @@ func TestLocalPostUpdate(t *testing.T) { /*{{{*/
 		},
 		{
 			func() {
-				ioutil.WriteFile(repoRoot+"1.md",
+				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
 					[]byte("hello world | 2012-12-01 \n# title hello world \n"), 0777)
 			},
 			func() {
-				os.Remove(repoRoot + "1.md")
+				os.Remove(filepath.Join(repoRoot, "11.md"))
 			},
-			repoRoot + "1.md",
+			filepath.Join(repoRoot, "11.md"),
 			nil,
 			&Expect{
-				path:    repoRoot + "1.md",
+				path:    filepath.Join(repoRoot, "11.md"),
 				title:   "hello world",
 				date:    "2012-12-01",
 				content: "<h1>title hello world</h1>\n",
@@ -201,16 +153,16 @@ func TestLocalPostUpdate(t *testing.T) { /*{{{*/
 		},
 		{
 			func() {
-				ioutil.WriteFile(repoRoot+"1.md",
+				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
 					[]byte("hello world | 2012-12-01 \n "), 0777)
 			},
 			func() {
-				os.Remove(repoRoot + "1.md")
+				os.Remove(filepath.Join(repoRoot, "11.md"))
 			},
-			repoRoot + "1.md",
+			filepath.Join(repoRoot, "11.md"),
 			nil,
 			&Expect{
-				path:    repoRoot + "1.md",
+				path:    filepath.Join(repoRoot, "11.md"),
 				title:   "hello world",
 				date:    "2012-12-01",
 				content: "",
@@ -218,37 +170,37 @@ func TestLocalPostUpdate(t *testing.T) { /*{{{*/
 		},
 		{
 			func() {
-				ioutil.WriteFile(repoRoot+"1.md",
+				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
 					[]byte(" hello world | 2012-12-01"), 0777)
 			},
 			func() {
-				os.Remove(repoRoot + "1.md")
+				os.Remove(filepath.Join(repoRoot, "11.md"))
 			},
-			repoRoot + "1.md",
+			filepath.Join(repoRoot, "11.md"),
 			errors.New("generateAll: there must be at least one line"),
 			nil,
 		},
 		{
 			func() {
-				ioutil.WriteFile(repoRoot+"1.md",
+				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
 					[]byte(" hello world & 2012-12-01\n"), 0777)
 			},
 			func() {
-				os.Remove(repoRoot + "1.md")
+				os.Remove(filepath.Join(repoRoot, "11.md"))
 			},
-			repoRoot + "1.md",
+			filepath.Join(repoRoot, "11.md"),
 			errors.New("generateAll: can't find seperator"),
 			nil,
 		},
 		{
 			func() {
-				ioutil.WriteFile(repoRoot+"1.md",
+				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
 					[]byte(" hello world || 2012-12-01\n"), 0777)
 			},
 			func() {
-				os.Remove(repoRoot + "1.md")
+				os.Remove(filepath.Join(repoRoot, "11.md"))
 			},
-			repoRoot + "1.md",
+			filepath.Join(repoRoot, "11.md"),
 			errors.New("parsing time"),
 			nil,
 		},

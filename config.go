@@ -38,9 +38,12 @@ func getConfig(path string) (*Configs, error) { /*{{{*/
 			clean = append(clean, i)
 			continue
 		}
-		//TODO:windows isabs not begin with '/'
-		if c.Type == "local" && !filepath.IsAbs(c.Root) {
-			cfg.Content[i].Root = filepath.Join(os.Getenv("GOPATH"), c.Root)
+		if c.Type == "local" {
+			c.Root = filepath.FromSlash(c.Root)
+			//TODO:windows isabs not begin with '/'
+			if !filepath.IsAbs(c.Root) {
+				cfg.Content[i].Root = filepath.Join(os.Getenv("GOPATH"), c.Root)
+			}
 		}
 	}
 	if len(clean) > 0 {

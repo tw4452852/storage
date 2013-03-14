@@ -3,10 +3,17 @@ package storage
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestConfig(t *testing.T) {
+	var localPath string
+	if runtime.GOOS == "windows" {
+		localPath = filepath.Join(os.Getenv("GOPATH"), "/tmp/1/1")
+	} else {
+		localPath = "/tmp/1/1"
+	}
 	cases := []struct {
 		path   string
 		err    error
@@ -18,7 +25,7 @@ func TestConfig(t *testing.T) {
 			&Configs{
 				[]Config{
 					{"git", "http://github.com/1/1"},
-					{"local", "/tmp/1/1"},
+					{"local", localPath},
 					{"local", filepath.Join(os.Getenv("GOPATH"), "/tmp/1/1")},
 					{"github", "http://github.com/2/2"},
 				},
