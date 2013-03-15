@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -238,3 +239,73 @@ func TestLocalPostUpdate(t *testing.T) { /*{{{*/
 		}
 	}
 } /*}}}*/
+
+func TestLocalPostStatic(t *testing.T) {
+	type Expect struct {
+		path string
+	}
+	type Case struct {
+		prepare   func()
+		clean     func()
+		path      string
+		updateErr error
+		expect    *Expect
+	}
+	cases := []*Case{
+		{
+			func() {
+				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
+					[]byte("hello world | 2012-12-01 \n![1](/1/1.png)\n"), 0777)
+			},
+			func() {
+				os.Remove(filepath.Join(repoRoot, "11.md"))
+			},
+			filepath.Join(repoRoot, "11.md"),
+			nil,
+			&Expect{
+				"/1/1.png",
+			},
+		},
+		{
+			func() {
+				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
+					[]byte("hello world | 2012-12-01 \n![1](1/1.png)\n"), 0777)
+			},
+			func() {
+				os.Remove(filepath.Join(repoRoot, "11.md"))
+			},
+			filepath.Join(repoRoot, "11.md"),
+			nil,
+			&Expect{
+				filepath.Join(filepath.Join(repoRoot, "11.md"), "/1/1.png"),
+			},
+		},
+	}
+	runCase := func(c *Case) error {
+		if c.clean != nil {
+			defer c.clean()
+		}
+		if c.prepare != nil {
+			c.prepare()
+		}
+		lp := newLocalPost(c.path)
+		if err := matchError(c.updateErr, lp.update()); err != nil {
+			return err
+		}
+		if c.updateErr != nil && c.expect == nil {
+			return nil
+		}
+		expect := lp.Key() + c.expect.path
+		content := string(lp.Content())
+		if !strings.Contains(content, expect) {
+			return fmt.Errorf("can't find %q in %q\n", expect, content)
+		}
+		return nil
+	}
+
+	for i, c := range cases {
+		if err := runCase(c); err != nil {
+			t.Errorf("case %d error: %s\n", i, err)
+		}
+	}
+}

@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"github.com/russross/blackfriday"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -120,7 +119,7 @@ func newPost() *post { /*{{{*/
 	return new(post)
 } /*}}}*/
 
-//implement Poster
+//implement Poster's common interface
 func (p *post) Date() template.HTML { /*{{{*/
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
@@ -162,10 +161,6 @@ func (p *post) Update(reader io.Reader) error { /*{{{*/
 	}
 	title := strings.TrimSpace(firstLine[:sepIndex])
 
-	//content
-	remain := strings.TrimSpace(string(c[firstLineIndex+1:]))
-	content := template.HTML(blackfriday.MarkdownCommon([]byte(remain)))
-
 	//date
 	t, e := time.Parse(TimePattern, strings.TrimSpace(firstLine[sepIndex+1:]))
 	if e != nil {
@@ -177,6 +172,10 @@ func (p *post) Update(reader io.Reader) error { /*{{{*/
 	io.WriteString(h, string(c))
 	key := fmt.Sprintf("%x", h.Sum(nil))
 
+	//content
+	remain := strings.TrimSpace(string(c[firstLineIndex+1:]))
+	content := template.HTML(markdown([]byte(remain), key))
+
 	//update all
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -186,4 +185,11 @@ func (p *post) Update(reader io.Reader) error { /*{{{*/
 	p.content = content
 
 	return nil
+} /*}}}*/
+
+type StaticErr string
+
+//implement Reader
+func (sr StaticErr) Read(p []byte) (int, error) { /*{{{*/
+	return copy(p, sr), nil
 } /*}}}*/

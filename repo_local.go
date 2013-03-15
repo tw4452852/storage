@@ -2,6 +2,8 @@ package storage
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -150,4 +152,18 @@ func (lp *localPost) update() error { /*{{{*/
 			lp.path, lp.Key(), lp.Date())
 	}
 	return nil
+} /*}}}*/
+
+//Implement localPost's Static interface
+func (lp *localPost) Static(path string) io.Reader { /*{{{*/
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(lp.path,
+			filepath.FromSlash(path))
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return StaticErr(fmt.Sprintf("open %q file failed: %s\n",
+			path, err))
+	}
+	return file
 } /*}}}*/

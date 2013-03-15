@@ -39,5 +39,5 @@ type Poster interface { /*{{{*/
 	Content() template.HTML
 	Title() template.HTML
 	Keyer
-	Update(io.Reader) error
+	Static(string) io.Reader
 } /*}}}*/
