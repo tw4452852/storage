@@ -240,7 +240,7 @@ func TestLocalPostUpdate(t *testing.T) { /*{{{*/
 	}
 } /*}}}*/
 
-func TestLocalPostStatic(t *testing.T) {
+func TestLocalPostStatic(t *testing.T) { /*{{{*/
 	type Expect struct {
 		path string
 	}
@@ -277,7 +277,7 @@ func TestLocalPostStatic(t *testing.T) {
 			filepath.Join(repoRoot, "11.md"),
 			nil,
 			&Expect{
-				filepath.Join(filepath.Join(repoRoot, "11.md"), "/1/1.png"),
+				"1/1.png",
 			},
 		},
 	}
@@ -295,10 +295,10 @@ func TestLocalPostStatic(t *testing.T) {
 		if c.updateErr != nil && c.expect == nil {
 			return nil
 		}
-		expect := lp.Key() + c.expect.path
+		expect := urlPrefix + lp.Key() + "/" + c.expect.path
 		content := string(lp.Content())
 		if !strings.Contains(content, expect) {
-			return fmt.Errorf("can't find %q in %q\n", expect, content)
+			return fmt.Errorf("can't find (%s) in (%s)\n", expect, content)
 		}
 		return nil
 	}
@@ -308,4 +308,4 @@ func TestLocalPostStatic(t *testing.T) {
 			t.Errorf("case %d error: %s\n", i, err)
 		}
 	}
-}
+} /*}}}*/

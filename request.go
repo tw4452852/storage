@@ -11,7 +11,7 @@ const (
 type request struct { /*{{{*/
 	cmd    cmd
 	args   []interface{}
-	result chan []interface{}
+	result chan []Poster
 	err    chan error
 } /*}}}*/
 
@@ -34,11 +34,14 @@ func Add(args ...Poster) error { /*{{{*/
 //Remove remove something from the dataCenter
 //If the things are not exist, do nothing
 //Some internal error will be returned
-func Remove(args ...interface{}) error { /*{{{*/
+func Remove(args ...Keyer) error { /*{{{*/
 	r := &request{
 		cmd:  REMOVE,
-		args: args,
+		args: make([]interface{}, len(args)),
 		err:  make(chan error),
+	}
+	for i, k := range args {
+		r.args[i] = k
 	}
 	dataCenter.requestCh <- r
 	return <-r.err
@@ -46,7 +49,7 @@ func Remove(args ...interface{}) error { /*{{{*/
 
 //Response for the request
 type Result struct { /*{{{*/
-	Content []interface{}
+	Content []Poster
 } /*}}}*/
 
 //Satisfy the Releaser
@@ -60,12 +63,15 @@ func (r *Result) Release() string { /*{{{*/
 //If you want get sth special, give the filter arg
 //Otherwise, get all
 //Some internal error will be returned
-func Get(args ...interface{}) (*Result, error) { /*{{{*/
+func Get(args ...Keyer) (*Result, error) { /*{{{*/
 	r := &request{
 		cmd:    GET,
-		args:   args,
-		result: make(chan []interface{}, 1),
+		args:   make([]interface{}, len(args)),
+		result: make(chan []Poster, 1),
 		err:    make(chan error),
+	}
+	for i, k := range args {
+		r.args[i] = k
 	}
 	dataCenter.requestCh <- r
 	if err := <-r.err; err != nil {

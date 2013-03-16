@@ -66,7 +66,7 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 		})
 		return
 	case GET:
-		content := make([]interface{}, 0)
+		content := make([]Poster, 0)
 		err := loopArgs(func(key string, arg interface{}) error {
 			if v, found := d.data[key]; found {
 				content = append(content, v)

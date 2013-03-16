@@ -32,6 +32,9 @@ func (e *entry) Title() template.HTML {
 func (e *entry) Static(string) io.Reader {
 	return nil
 }
+func (e *entry) Update(io.Reader) error {
+	return nil
+}
 
 type invalidEntry struct {
 	data string
@@ -189,7 +192,11 @@ func TestRemove(t *testing.T) { /*{{{*/
 				t.Fatal(err)
 			}
 		}
-		if e := matchError(c.err, Remove(c.input...)); e != nil {
+		inputs := make([]Keyer, len(c.input))
+		for i, v := range c.input {
+			inputs[i] = v.(Keyer)
+		}
+		if e := matchError(c.err, Remove(inputs...)); e != nil {
 			t.Fatal(e)
 		}
 		if c.checker != nil {
@@ -305,7 +312,11 @@ func TestGet(t *testing.T) { /*{{{*/
 				t.Fatal(err)
 			}
 		}
-		result, err := Get(c.input...)
+		inputs := make([]Keyer, len(c.input))
+		for i, v := range c.input {
+			inputs[i] = v.(Keyer)
+		}
+		result, err := Get(inputs...)
 		if e := matchError(c.err, err); e != nil {
 			t.Fatal(e)
 		}
@@ -317,7 +328,7 @@ func TestGet(t *testing.T) { /*{{{*/
 	}
 } /*}}}*/
 
-func compareTwo(expects []*entry, reals []interface{}) error { /*{{{*/
+func compareTwo(expects []*entry, reals []Poster) error { /*{{{*/
 check:
 	for _, expect := range expects {
 		for _, real := range reals {

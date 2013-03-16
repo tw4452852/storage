@@ -156,9 +156,9 @@ func (lp *localPost) update() error { /*{{{*/
 
 //Implement localPost's Static interface
 func (lp *localPost) Static(path string) io.Reader { /*{{{*/
+	path = filepath.FromSlash(path)
 	if !filepath.IsAbs(path) {
-		path = filepath.Join(lp.path,
-			filepath.FromSlash(path))
+		path = filepath.Join(lp.path, path)
 	}
 	file, err := os.Open(path)
 	if err != nil {

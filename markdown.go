@@ -7,16 +7,18 @@ import (
 
 //a wrapper of blackfriday.Renderer
 type myRender struct {
-	imgPrefix string
+	key string
 	blackfriday.Renderer
 }
 
+const urlPrefix = "/images/"
+
 //add prefix to img link
 func (mr *myRender) Image(out *bytes.Buffer, link, title, alt []byte) {
-	mr.Renderer.Image(out, []byte(mr.imgPrefix+string(link)), title, alt)
+	mr.Renderer.Image(out, []byte(urlPrefix+mr.key+"/"+string(link)), title, alt)
 }
 
-func markdown(input []byte, imgPrefix string) []byte { /*{{{*/
+func markdown(input []byte, key string) []byte { /*{{{*/
 	// set up the HTML renderer
 	htmlFlags := 0
 	htmlFlags |= blackfriday.HTML_USE_XHTML
@@ -24,8 +26,8 @@ func markdown(input []byte, imgPrefix string) []byte { /*{{{*/
 	htmlFlags |= blackfriday.HTML_SMARTYPANTS_FRACTIONS
 	htmlFlags |= blackfriday.HTML_SMARTYPANTS_LATEX_DASHES
 	renderer := &myRender{
-		imgPrefix: imgPrefix,
-		Renderer:  blackfriday.HtmlRenderer(htmlFlags, "", ""),
+		key:      key,
+		Renderer: blackfriday.HtmlRenderer(htmlFlags, "", ""),
 	}
 
 	// set up the parser
