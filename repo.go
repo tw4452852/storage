@@ -169,7 +169,7 @@ func (p *post) Update(reader io.Reader) error { /*{{{*/
 
 	//key
 	h := md5.New()
-	io.WriteString(h, string(c))
+	io.WriteString(h, firstLine)
 	key := fmt.Sprintf("%x", h.Sum(nil))
 
 	//content
