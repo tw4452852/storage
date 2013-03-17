@@ -52,27 +52,30 @@ func (lr *localRepo) Refresh() { /*{{{*/
 
 //clean the noexist posts
 func (lr *localRepo) clean() { /*{{{*/
-	cleans := make([]string, 0)
-	for relPath := range lr.posts {
+	cleans := make([]Keyer, 0)
+	for relPath, p := range lr.posts {
 		absPath := filepath.Join(lr.root, relPath)
 		_, err := os.Stat(absPath)
 		if err != nil && os.IsNotExist(err) {
-			cleans = append(cleans, relPath)
+			cleans = append(cleans, p)
+			delete(lr.posts, relPath)
 		}
 	}
-	for _, relPath := range cleans {
-		lp := lr.posts[relPath]
-		if err := Remove(lp); err != nil {
+	if len(cleans) != 0 {
+		if err := Remove(cleans...); err != nil {
 			log.Printf("remove local post failed: %s\n", err)
-			continue
 		}
-		log.Printf("remove a local post: %s\n", lp.path)
-		delete(lr.posts, relPath)
 	}
 } /*}}}*/
 
 //update add new post or update the exist ones
 func (lr *localRepo) update() { /*{{{*/
+	updateLocalPost := func(lp *localPost) {
+		if err := lp.update(); err != nil {
+			log.Printf("update local post(%s) failed: %s\n", lp.path, err)
+		}
+	}
+
 	if err := filepath.Walk(lr.root, func(path string, info os.FileInfo, err error) error {
 		//only watch the special filetype
 		if info.IsDir() || !filetypeFilter(path) {
@@ -83,15 +86,11 @@ func (lr *localRepo) update() { /*{{{*/
 		if !found {
 			lp := newLocalPost(path)
 			lr.posts[relPath] = lp
-			if err := lp.update(); err != nil {
-				log.Printf("update local post(%s) failed: %s\n", lp.path, err)
-			}
+			updateLocalPost(lp)
 			return nil
 		}
 		//update a exist one
-		if err := post.update(); err != nil {
-			log.Printf("update local post(%s) failed: %s\n", post.path, err)
-		}
+		updateLocalPost(post)
 		return nil
 	}); err != nil {
 		log.Printf("update local repo(%s) error: %s\n",
