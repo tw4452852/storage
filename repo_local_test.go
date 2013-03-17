@@ -34,7 +34,7 @@ func TestLocalSetup(t *testing.T) { /*{{{*/
 
 	for _, c := range cases {
 		lr := NewLocalRepo(c.root)
-		if e := matchError(c.expect, lr.Setup()); e != nil {
+		if e := matchError(c.expect, lr.Setup("", "")); e != nil {
 			t.Error(e)
 		}
 		r := lr.(*localRepo)
@@ -47,7 +47,7 @@ func TestLocalSetup(t *testing.T) { /*{{{*/
 
 func TestLocalRepo(t *testing.T) { /*{{{*/
 	repo := NewLocalRepo(repoRoot)
-	if err := repo.Setup(); err != nil {
+	if err := repo.Setup("", ""); err != nil {
 		t.Fatal(err)
 	}
 	repo.Uninstall()

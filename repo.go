@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -18,7 +19,7 @@ import (
 //Repository represent a repostory
 type Repository interface { /*{{{*/
 	//used for setup a repository
-	Setup() error
+	Setup(user, password string) error
 	//used for updating a repository
 	Refresh()
 	//used for uninstall a repostory
@@ -57,7 +58,7 @@ func (rs repos) refresh(cfg *Configs) { /*{{{*/
 		if !found {
 			if initF, supported := supportedRepoTypes[kind]; supported {
 				repo := initF(root)
-				if err := repo.Setup(); err != nil {
+				if err := repo.Setup(c.User, c.Password); err != nil {
 					log.Printf("add repo: setup failed with err(%s)\n", err)
 					continue
 				}
@@ -119,7 +120,7 @@ func newPost() *post { /*{{{*/
 	return new(post)
 } /*}}}*/
 
-//implement Poster's common interface
+//implement Poster's common part
 func (p *post) Date() template.HTML { /*{{{*/
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
@@ -189,7 +190,22 @@ func (p *post) Update(reader io.Reader) error { /*{{{*/
 
 type StaticErr string
 
-//implement Reader
+//implement io.Reader
 func (sr StaticErr) Read(p []byte) (int, error) { /*{{{*/
 	return copy(p, sr), nil
+} /*}}}*/
+
+//supported filetype
+var filters = []*regexp.Regexp{ /*{{{*/
+	regexp.MustCompile(".*.md$"),
+} /*}}}*/
+
+//filter file type , return pass
+func filetypeFilter(path string) (passed bool) { /*{{{*/
+	for _, filter := range filters {
+		if filter.MatchString(path) {
+			return true
+		}
+	}
+	return false
 } /*}}}*/

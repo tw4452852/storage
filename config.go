@@ -8,8 +8,10 @@ import (
 )
 
 type Config struct { /*{{{*/
-	Type string `xml:"type"`
-	Root string `xml:"root"`
+	Type     string `xml:"type"`
+	Root     string `xml:"root"`
+	User     string `xml:"username"`
+	Password string `xml:"password"`
 } /*}}}*/
 
 type Configs struct { /*{{{*/

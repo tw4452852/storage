@@ -2,6 +2,8 @@
 	<repo>
 		<type>git</type>
 		<root>http://github.com/1/1</root>
+		<username>tw</username>
+		<password>123</password>
 	</repo>
 	<repo>
 		<root>/tmp/1/1</root>
@@ -23,5 +25,6 @@
 	<repo>
 		<type>github</type>
 		<root>http://github.com/2/2</root>
+		<password>321</password>
 	</repo>
 </repos>

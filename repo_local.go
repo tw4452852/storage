@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"time"
 )
 
@@ -28,7 +27,7 @@ func NewLocalRepo(root string) Repository { /*{{{*/
 } /*}}}*/
 
 //implement the Repository interface
-func (lr *localRepo) Setup() error { /*{{{*/
+func (lr *localRepo) Setup(user, password string) error { /*{{{*/
 	//root Must be a dir
 	fi, err := os.Stat(lr.root)
 	if err != nil {
@@ -98,21 +97,6 @@ func (lr *localRepo) update() { /*{{{*/
 		log.Printf("update local repo(%s) error: %s\n",
 			lr.root, err)
 	}
-} /*}}}*/
-
-//supported filetype
-var filters = []*regexp.Regexp{ /*{{{*/
-	regexp.MustCompile(".*.md$"),
-} /*}}}*/
-
-//filter file type , return pass
-func filetypeFilter(path string) (passed bool) { /*{{{*/
-	for _, filter := range filters {
-		if filter.MatchString(path) {
-			return true
-		}
-	}
-	return false
 } /*}}}*/
 
 //represet a local post
