@@ -47,7 +47,7 @@ func (gr *githubRepo) Uninstall() { /*{{{*/
 	//nothing to clear
 } /*}}}*/
 
-func execAPI(client *ghc.GithubClient, url string) (ghc.JsonMap, error) {
+func execAPI(client *ghc.GithubClient, url string) (ghc.JsonMap, error) { /*{{{*/
 	req, err := client.NewAPIRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func execAPI(client *ghc.GithubClient, url string) (ghc.JsonMap, error) {
 		return nil, err
 	}
 	return res.JsonMap()
-}
+} /*}}}*/
 
 func (gr *githubRepo) Refresh() { /*{{{*/
 	//get the master branch post list
@@ -95,7 +95,6 @@ func (gr *githubRepo) Refresh() { /*{{{*/
 
 //the paths has been sorted in increasing order
 func (gr *githubRepo) clean(paths []string) { /*{{{*/
-	log.Printf("githubRepo clean: %v\n", paths)
 	cleans := make([]Keyer, 0)
 	for relPath, p := range gr.posts {
 		i := sort.SearchStrings(paths, relPath)
@@ -113,7 +112,6 @@ func (gr *githubRepo) clean(paths []string) { /*{{{*/
 
 //the paths has been sorted in increasing order
 func (gr *githubRepo) update(paths []string) { /*{{{*/
-	log.Printf("githubRepo update: %v\n", paths)
 	updateGithubPost := func(gp *githubPost, path string) {
 		m, err := execAPI(gr.client,
 			"repos/"+gr.user+"/"+gr.name+"/contents/"+path)
@@ -125,7 +123,6 @@ func (gr *githubRepo) update(paths []string) { /*{{{*/
 		if err := gp.update(m.GetString("sha"), m.GetString("content")); err != nil {
 			log.Printf("update github post(%s) failed: %s\n", path, err)
 		}
-		log.Printf("update a github post(%s)\n", path)
 	}
 
 	for _, path := range paths {
@@ -133,15 +130,16 @@ func (gr *githubRepo) update(paths []string) { /*{{{*/
 		if !found {
 			gp := newGithubPost(path, gr)
 			gr.posts[path] = gp
+			log.Printf("add a new github post(%s)\n", path)
 			updateGithubPost(gp, path)
-			return
+			continue
 		}
 		//update a exist one
 		updateGithubPost(post, path)
 	}
 } /*}}}*/
 
-func (gr *githubRepo) static(path string) io.Reader {
+func (gr *githubRepo) static(path string) io.Reader { /*{{{*/
 	m, err := execAPI(gr.client,
 		"repos/"+gr.user+"/"+gr.name+"/contents/"+path)
 	if err != nil {
@@ -149,8 +147,8 @@ func (gr *githubRepo) static(path string) io.Reader {
 			path, err))
 	}
 	return base64.NewDecoder(base64.StdEncoding,
-		strings.NewReader(m.GetString("content")))
-}
+		strings.NewReader(strings.Replace(m.GetString("content"), "\n", "", -1)))
+} /*}}}*/
 
 type githubPost struct { /*{{{*/
 	repo *githubRepo
@@ -178,10 +176,17 @@ func (gp *githubPost) update(sha, encodedContent string) error { /*{{{*/
 	if err != nil {
 		return err
 	}
-	return Add(gp)
+	log.Printf("update a github post(%s)\n", gp.path)
+	//add it to the dataCenter
+	if err = Add(gp); err != nil {
+		return err
+	}
+	//update it sha
+	gp.sha = sha
+	return nil
 } /*}}}*/
 
-func (gp *githubPost) Static(p string) io.Reader {
+func (gp *githubPost) Static(p string) io.Reader { /*{{{*/
 	p = path.Join(path.Dir(gp.path), p)
 	return gp.repo.static(p)
-}
+} /*}}}*/
