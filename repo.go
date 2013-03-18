@@ -95,8 +95,12 @@ func initRepos() { /*{{{*/
 func checkConfig(r repos) { /*{{{*/
 	//refresh every 10s
 	timer := time.NewTicker(10 * time.Second)
+	cpath := ConfigPath
+	if !filepath.IsAbs(cpath) {
+		cpath = filepath.Join(os.Getenv("GOPATH"), cpath)
+	}
 	for _ = range timer.C {
-		cfg, err := getConfig(filepath.Join(os.Getenv("GOPATH"), ConfigPath))
+		cfg, err := getConfig(cpath)
 		if err != nil {
 			//if there is some error(e.g. file doesn't exist) while reading
 			//config file, just skip this refresh

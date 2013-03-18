@@ -19,8 +19,7 @@ const ( /*{{{*/
 	TitleAndDateSeperator = "|"
 	TimePattern           = "2006-01-02"
 	//get repo config file
-	//Must be: $GOPATH/src/github.com/tw4452852/totorow/conf/repos.xml
-	ConfigPath = "src/github.com/tw4452852/totorow/conf/repos.xml"
+	ConfigPath = "/app/conf/repos.xml"
 ) /*}}}*/
 
 //Releaser release a reference
