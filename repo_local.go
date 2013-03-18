@@ -40,7 +40,15 @@ func (lr *localRepo) Setup(user, password string) error { /*{{{*/
 } /*}}}*/
 
 func (lr *localRepo) Uninstall() { /*{{{*/
-	//nothing to do
+	//delete repo's post in the dataCenter
+	cleans := make([]Keyer, 0, len(lr.posts))
+	for _, p := range lr.posts {
+		cleans = append(cleans, p)
+	}
+	if err := Remove(cleans...); err != nil {
+		log.Printf("remove all the posts in local repo(%s) failed: %s\n",
+			lr.root, err)
+	}
 } /*}}}*/
 
 func (lr *localRepo) Refresh() { /*{{{*/

@@ -44,7 +44,15 @@ func (gr *githubRepo) Setup(user, password string) error { /*{{{*/
 } /*}}}*/
 
 func (gr *githubRepo) Uninstall() { /*{{{*/
-	//nothing to clear
+	//delete repo's post in the dataCenter
+	cleans := make([]Keyer, 0, len(gr.posts))
+	for _, p := range gr.posts {
+		cleans = append(cleans, p)
+	}
+	if err := Remove(cleans...); err != nil {
+		log.Printf("remove all the posts in github repo(%s/%s) failed: %s\n",
+			gr.user, gr.name, err)
+	}
 } /*}}}*/
 
 func execAPI(client *ghc.GithubClient, url string) (ghc.JsonMap, error) { /*{{{*/
