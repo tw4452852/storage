@@ -17,11 +17,64 @@ func init() {
 }
 
 type githubRepo struct {
-	client *ghc.GithubClient
+	client *githubClient
 	name   string
 	user   string
 	posts  map[string]*githubPost
 }
+
+//A wrapper of *ghc.GithubClient
+//Used to avoid the exceed the limit
+type githubClient struct {
+	cache map[string]ghc.JsonMap
+	*ghc.GithubClient
+}
+
+func newGithubClient(client *ghc.GithubClient) *githubClient { /*{{{*/
+	return &githubClient{
+		cache:        make(map[string]ghc.JsonMap),
+		GithubClient: client,
+	}
+} /*}}}*/
+
+func (client *githubClient) execAPI(url string) (ghc.JsonMap, error) { /*{{{*/
+	run := func(url string) (ghc.JsonMap, error) {
+		req, err := client.NewAPIRequest("GET", url, nil)
+		if err != nil {
+			return nil, err
+		}
+		res, err := client.RunRequest(req, new(http.Client))
+		if err != nil {
+			return nil, err
+		}
+		m, err := res.JsonMap()
+		if err != nil {
+			return nil, err
+		}
+		//update the cache
+		client.cache[url] = m
+		return m, nil
+	}
+	cached, found := client.cache[url]
+	//save at least 100 api count
+	const atleast = 100
+	//get current remaining count
+	m, err := run("rate_limit")
+	if err != nil {
+		return nil, err
+	}
+	remain := m.GetMap("rate").GetInt("remaining")
+	if remain <= atleast {
+		if !found {
+			//we have to request ignoring the limit
+			return run(url)
+		}
+		//just return the cached
+		return cached, nil
+	}
+	//we still have chance to send request
+	return run(url)
+} /*}}}*/
 
 func NewGithubRepo(name string) Repository { /*{{{*/
 	return &githubRepo{
@@ -38,7 +91,7 @@ func (gr *githubRepo) Setup(user, password string) error { /*{{{*/
 	if err != nil {
 		return err
 	}
-	gr.client = client
+	gr.client = newGithubClient(client)
 	gr.user = user
 	return nil
 } /*}}}*/
@@ -55,32 +108,20 @@ func (gr *githubRepo) Uninstall() { /*{{{*/
 	}
 } /*}}}*/
 
-func execAPI(client *ghc.GithubClient, url string) (ghc.JsonMap, error) { /*{{{*/
-	req, err := client.NewAPIRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := client.RunRequest(req, new(http.Client))
-	if err != nil {
-		return nil, err
-	}
-	return res.JsonMap()
-} /*}}}*/
-
 func (gr *githubRepo) Refresh() { /*{{{*/
 	//get the master branch post list
 	//1.get master branch tree sha
 	//2.filter tree to get support file
 	//if there is some error happened, just abort and do nothing
-	master, err := execAPI(gr.client,
-		"repos/"+gr.user+"/"+gr.name+"/branches/master")
+	master, err := gr.client.execAPI(
+		"repos/" + gr.user + "/" + gr.name + "/branches/master")
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	sha := master.GetMap("commit").GetMap("commit").GetMap("tree").GetString("sha")
-	tree, err := execAPI(gr.client,
-		"repos/"+gr.user+"/"+gr.name+"/git/trees/"+sha+"?recursive=1")
+	tree, err := gr.client.execAPI(
+		"repos/" + gr.user + "/" + gr.name + "/git/trees/" + sha + "?recursive=1")
 	if err != nil {
 		log.Println(err)
 		return
@@ -121,8 +162,8 @@ func (gr *githubRepo) clean(paths []string) { /*{{{*/
 //the paths has been sorted in increasing order
 func (gr *githubRepo) update(paths []string) { /*{{{*/
 	updateGithubPost := func(gp *githubPost, path string) {
-		m, err := execAPI(gr.client,
-			"repos/"+gr.user+"/"+gr.name+"/contents/"+path)
+		m, err := gr.client.execAPI(
+			"repos/" + gr.user + "/" + gr.name + "/contents/" + path)
 		if err != nil {
 			log.Printf("get github post(%s) content failed: %s\n",
 				path, err)
@@ -148,8 +189,8 @@ func (gr *githubRepo) update(paths []string) { /*{{{*/
 } /*}}}*/
 
 func (gr *githubRepo) static(path string) io.Reader { /*{{{*/
-	m, err := execAPI(gr.client,
-		"repos/"+gr.user+"/"+gr.name+"/contents/"+path)
+	m, err := gr.client.execAPI(
+		"repos/" + gr.user + "/" + gr.name + "/contents/" + path)
 	if err != nil {
 		return StaticErr(fmt.Sprintf("get static file %q failed: %s\n",
 			path, err))
