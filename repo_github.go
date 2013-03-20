@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	ghc "github.com/alcacoop/go-github-client/client"
 	"io"
@@ -10,11 +11,15 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 )
 
 func init() {
 	RegisterRepoType("github", NewGithubRepo)
 }
+
+var nilError = errors.New("nil error")
 
 type githubRepo struct {
 	client *githubClient
@@ -26,54 +31,111 @@ type githubRepo struct {
 //A wrapper of *ghc.GithubClient
 //Used to avoid the exceed the limit
 type githubClient struct {
-	cache map[string]ghc.JsonMap
+	lock  sync.RWMutex
+	cache map[string]*githubResource
 	*ghc.GithubClient
 }
 
+//githubResource represet a github content
+//according to the url, etag used for a
+//conditional request
+type githubResource struct {
+	ghc.JsonMap
+	etag string
+}
+
 func newGithubClient(client *ghc.GithubClient) *githubClient { /*{{{*/
-	return &githubClient{
-		cache:        make(map[string]ghc.JsonMap),
+	gc := &githubClient{
+		cache:        make(map[string]*githubResource),
 		GithubClient: client,
+	}
+	go gc.refresh()
+	return gc
+} /*}}}*/
+
+//refresh periodically the cache
+func (gc *githubClient) refresh() { /*{{{*/
+	timer := time.NewTicker(1 * time.Minute)
+	for _ = range timer.C {
+		for url := range gc.cache {
+			gr, err := execApi(gc, url, true)
+			if err != nil {
+				log.Printf("refresh github post(%s) failed: %s\n",
+					url, err)
+				continue
+			}
+			if err == nil && gr == nil {
+				//nothing to be updated
+				continue
+			}
+			gc.lock.Lock()
+			gc.cache[url] = gr
+			gc.lock.Unlock()
+		}
 	}
 } /*}}}*/
 
-func (client *githubClient) execAPI(url string) (ghc.JsonMap, error) { /*{{{*/
-	run := func(url string) (ghc.JsonMap, error) {
-		req, err := client.NewAPIRequest("GET", url, nil)
-		if err != nil {
-			return nil, err
-		}
-		res, err := client.RunRequest(req, new(http.Client))
-		if err != nil {
-			return nil, err
-		}
-		m, err := res.JsonMap()
-		if err != nil {
-			return nil, err
-		}
-		//update the cache
-		client.cache[url] = m
-		return m, nil
+//get the appointed resource according to the url
+//If there is a cache, just return it, otherwise,
+//emit a api request and update the cache
+//if it is a conditional request, return nil, nil when succeed
+func (gc *githubClient) get(url string) (ghc.JsonMap, error) { /*{{{*/
+	gc.lock.RLock()
+	gr, found := gc.cache[url]
+	if found {
+		gc.lock.RUnlock()
+		return gr.JsonMap, nil
 	}
-	cached, found := client.cache[url]
-	//save at least 100 api count
-	const atleast = 100
-	//get current remaining count
-	m, err := run("rate_limit")
+	//if not found, release the Rlock first,
+	//prepare to emit a api request
+	gc.lock.RUnlock()
+	gr, err := execApi(gc, url, false)
 	if err != nil {
 		return nil, err
 	}
-	remain := m.GetMap("rate").GetInt("remaining")
-	if remain <= atleast {
-		if !found {
-			//we have to request ignoring the limit
-			return run(url)
-		}
-		//just return the cached
-		return cached, nil
+	//save result into cache
+	gc.lock.Lock()
+	defer gc.lock.Unlock()
+	gc.cache[url] = gr
+	return gr.JsonMap, nil
+} /*}}}*/
+
+func execApi(client *githubClient, url string, isCondition bool) (*githubResource, error) { /*{{{*/
+	req, err := client.NewAPIRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
 	}
-	//we still have chance to send request
-	return run(url)
+	if isCondition {
+		etag := client.cache[url].etag
+		if etag == "" {
+			return nil,
+				fmt.Errorf("there is no etag for condition request(%s)", url)
+		}
+		req.Header.Set("If-None-Match", etag)
+	}
+	res, err := client.RunRequest(req, new(http.Client))
+	if err != nil {
+		return nil, err
+	}
+
+	//check if nothing is modified
+	if isCondition &&
+		res.RawHttpResponse.Status == "304 Not Modified" {
+		return nil, nil
+	}
+
+	etag := res.RawHttpResponse.Header.Get("ETag")
+	if etag == "" {
+		return nil, errors.New("ETag is null")
+	}
+	m, err := res.JsonMap()
+	if err != nil {
+		return nil, err
+	}
+	return &githubResource{
+		JsonMap: m,
+		etag:    etag,
+	}, nil
 } /*}}}*/
 
 func NewGithubRepo(name string) Repository { /*{{{*/
@@ -113,20 +175,43 @@ func (gr *githubRepo) Refresh() { /*{{{*/
 	//1.get master branch tree sha
 	//2.filter tree to get support file
 	//if there is some error happened, just abort and do nothing
-	master, err := gr.client.execAPI(
+	master, err := gr.client.get(
 		"repos/" + gr.user + "/" + gr.name + "/branches/master")
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	sha := master.GetMap("commit").GetMap("commit").GetMap("tree").GetString("sha")
-	tree, err := gr.client.execAPI(
+	c := master.GetMap("commit")
+	if c == nil {
+		log.Println(nilError, master)
+		return
+	}
+	cc := c.GetMap("commit")
+	if cc == nil {
+		log.Println(nilError, c)
+		return
+	}
+	t := cc.GetMap("tree")
+	if c == nil {
+		log.Println(nilError, cc)
+		return
+	}
+	sha := t.GetString("sha")
+	if sha == "" {
+		log.Println(nilError, cc)
+		return
+	}
+	tree, err := gr.client.get(
 		"repos/" + gr.user + "/" + gr.name + "/git/trees/" + sha + "?recursive=1")
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	treeArray := tree.GetArray("tree")
+	if treeArray == nil {
+		log.Println(nilError, tree)
+		return
+	}
 	paths := make([]string, 0)
 	for i := range treeArray {
 		path := treeArray.GetObject(i).GetString("path")
@@ -162,7 +247,7 @@ func (gr *githubRepo) clean(paths []string) { /*{{{*/
 //the paths has been sorted in increasing order
 func (gr *githubRepo) update(paths []string) { /*{{{*/
 	updateGithubPost := func(gp *githubPost, path string) {
-		m, err := gr.client.execAPI(
+		m, err := gr.client.get(
 			"repos/" + gr.user + "/" + gr.name + "/contents/" + path)
 		if err != nil {
 			log.Printf("get github post(%s) content failed: %s\n",
@@ -189,7 +274,7 @@ func (gr *githubRepo) update(paths []string) { /*{{{*/
 } /*}}}*/
 
 func (gr *githubRepo) static(path string) io.Reader { /*{{{*/
-	m, err := gr.client.execAPI(
+	m, err := gr.client.get(
 		"repos/" + gr.user + "/" + gr.name + "/contents/" + path)
 	if err != nil {
 		return StaticErr(fmt.Sprintf("get static file %q failed: %s\n",
