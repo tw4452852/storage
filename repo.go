@@ -196,7 +196,8 @@ type StaticErr string
 
 //implement io.Reader
 func (sr StaticErr) Read(p []byte) (int, error) { /*{{{*/
-	return copy(p, sr), nil
+	log.Println(sr)
+	return 0, errors.New(string(sr))
 } /*}}}*/
 
 //supported filetype
