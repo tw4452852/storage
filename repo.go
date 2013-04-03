@@ -87,15 +87,15 @@ func (rs repos) refresh(cfg *Configs) { /*{{{*/
 
 var repositories repos
 
-func initRepos() { /*{{{*/
+func initRepos(configPath string) { /*{{{*/
 	repositories = make(repos)
-	go checkConfig(repositories)
+	go checkConfig(repositories, configPath)
 } /*}}}*/
 
-func checkConfig(r repos) { /*{{{*/
+func checkConfig(r repos, configPath string) { /*{{{*/
 	//refresh every 10s
 	timer := time.NewTicker(10 * time.Second)
-	cpath := ConfigPath
+	cpath := configPath
 	if !filepath.IsAbs(cpath) {
 		cpath = filepath.Join(os.Getenv("GOPATH"), cpath)
 	}

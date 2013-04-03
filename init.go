@@ -6,20 +6,18 @@ import (
 )
 
 //Init init the dataCenter and repositories
-func Init() { /*{{{*/
+func Init(configPath string) { /*{{{*/
 	dataCenter = &storage{
 		requestCh: make(chan *request),
 		data:      make(map[string]Poster),
 	}
 	go dataCenter.serve()
-	initRepos()
+	initRepos(configPath)
 } /*}}}*/
 
 const ( /*{{{*/
 	TitleAndDateSeperator = "|"
 	TimePattern           = "2006-01-02"
-	//get repo config file
-	ConfigPath = "/app/conf/repos.xml"
 ) /*}}}*/
 
 //Releaser release a reference
