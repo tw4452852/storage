@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	Init()
+	Init("./testdata")
 }
 
 type entry struct {

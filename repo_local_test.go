@@ -295,7 +295,7 @@ func TestLocalPostStatic(t *testing.T) { /*{{{*/
 		if c.updateErr != nil && c.expect == nil {
 			return nil
 		}
-		expect := urlPrefix + lp.Key() + "/" + c.expect.path
+		expect := imagePrefix + lp.Key() + "/" + c.expect.path
 		content := string(lp.Content())
 		if !strings.Contains(content, expect) {
 			return fmt.Errorf("can't find (%s) in (%s)\n", expect, content)
