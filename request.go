@@ -1,5 +1,9 @@
 package storage
 
+import (
+	"time"
+)
+
 type cmd int
 
 const (
@@ -57,6 +61,21 @@ type Result struct { /*{{{*/
 func (r *Result) Release() string { /*{{{*/
 	dataCenter.waiter.Done()
 	return ""
+} /*}}}*/
+
+//Satisfy sort.Interface
+func (r *Result) Len() int { /*{{{*/
+	return len(r.Content)
+} /*}}}*/
+
+func (r *Result) Less(i, j int) bool { /*{{{*/
+	ti, _ := time.Parse(TimePattern, string(r.Content[i].Date()))
+	tj, _ := time.Parse(TimePattern, string(r.Content[j].Date()))
+	return ti.After(tj)
+} /*}}}*/
+
+func (r *Result) Swap(i, j int) { /*{{{*/
+	r.Content[i], r.Content[j] = r.Content[j], r.Content[i]
 } /*}}}*/
 
 //Get may get something from the dataCenter
