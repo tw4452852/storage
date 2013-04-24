@@ -125,10 +125,10 @@ func newPost() *post { /*{{{*/
 } /*}}}*/
 
 //implement Poster's common part
-func (p *post) Date() template.HTML { /*{{{*/
+func (p *post) Date() time.Time { /*{{{*/
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
-	return template.HTML(p.date.Format(TimePattern))
+	return p.date
 } /*}}}*/
 
 func (p *post) Content() template.HTML { /*{{{*/
