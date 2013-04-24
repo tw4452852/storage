@@ -224,7 +224,7 @@ func TestLocalPostUpdate(t *testing.T) { /*{{{*/
 		real := &Expect{
 			path:    lp.path,
 			title:   string(lp.Title()),
-			date:    string(lp.Date()),
+			date:    lp.Date().Format(TimePattern),
 			content: string(lp.Content()),
 		}
 		if *real != *c.expect {
