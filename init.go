@@ -3,6 +3,7 @@ package storage
 import (
 	"html/template"
 	"io"
+	"time"
 )
 
 //Init init the dataCenter and repositories
@@ -32,7 +33,7 @@ type Keyer interface { /*{{{*/
 
 //Poster represet a post
 type Poster interface { /*{{{*/
-	Date() template.HTML
+	Date() time.Time
 	Content() template.HTML
 	Title() template.HTML
 	Keyer

@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"testing"
+	"time"
 )
 
 func init() {
@@ -20,8 +21,8 @@ type entry struct {
 func (e *entry) Key() string {
 	return e.data
 }
-func (e *entry) Date() template.HTML {
-	return template.HTML("1988-11-13")
+func (e *entry) Date() time.Time {
+	return time.Now()
 }
 func (e *entry) Content() template.HTML {
 	return template.HTML("hello test content")

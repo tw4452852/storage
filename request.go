@@ -1,9 +1,5 @@
 package storage
 
-import (
-	"time"
-)
-
 type cmd int
 
 const (
@@ -69,9 +65,7 @@ func (r *Result) Len() int { /*{{{*/
 } /*}}}*/
 
 func (r *Result) Less(i, j int) bool { /*{{{*/
-	ti, _ := time.Parse(TimePattern, string(r.Content[i].Date()))
-	tj, _ := time.Parse(TimePattern, string(r.Content[j].Date()))
-	return ti.After(tj)
+	return r.Content[i].Date().After(r.Content[j].Date())
 } /*}}}*/
 
 func (r *Result) Swap(i, j int) { /*{{{*/
