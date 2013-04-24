@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"log"
 )
 
 var dataCenter *storage
@@ -44,14 +45,22 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 	case ADD:
 		req.err <- loopArgs(func(key string, arg interface{}) error {
 			//add or update it, here only myself refer the map
-			d.data[key] = arg.(Poster)
+			if poster, ok := arg.(Poster); ok {
+				d.data[key] = arg.(Poster)
+				log.Printf("Add: key(%s), title(%s), date(%s)\n",
+					poster.Key(), poster.Title(), poster.Date())
+			}
 			return nil
 		})
 		return
 	case REMOVE:
 		req.err <- loopArgs(func(key string, arg interface{}) error {
 			//remove it, here only myself refer the map
-			delete(d.data, key)
+			if poster, ok := d.data[key]; ok {
+				delete(d.data, key)
+				log.Printf("Remove: key(%s), title(%s), date(%s)\n",
+					key, poster.Title(), poster.Date())
+			}
 			return nil
 		})
 		return

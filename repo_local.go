@@ -139,8 +139,6 @@ func (lp *localPost) update() error { /*{{{*/
 		if err := Add(lp); err != nil {
 			log.Printf("update a local post failed: %s\n", err)
 		}
-		log.Printf("update a local post: path(%s), key(%x), date(%s)\n",
-			lp.path, lp.Key(), lp.Date())
 	}
 	return nil
 } /*}}}*/
