@@ -21,11 +21,6 @@ const ( /*{{{*/
 	TimePattern           = "2006-01-02"
 ) /*}}}*/
 
-//Releaser release a reference
-type Releaser interface { /*{{{*/
-	Release() string
-} /*}}}*/
-
 //Keyer represent a key to post
 type Keyer interface { /*{{{*/
 	Key() string

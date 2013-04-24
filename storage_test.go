@@ -228,21 +228,6 @@ func TestGet(t *testing.T) { /*{{{*/
 				if err := compareTwo(ents[1:], r.Content); err != nil {
 					return err
 				}
-
-				done := make(chan bool, 1)
-				go func() {
-					dataCenter.waiter.Wait()
-					done <- true
-				}()
-				var ri interface{} = r
-				if rr, ok := ri.(Releaser); ok {
-					rr.Release()
-					if <-done != true {
-						return errors.New("get all: wait failed\n")
-					}
-				} else {
-					return errors.New("get all: result is not a Releaser\n")
-				}
 				return nil
 			},
 		},

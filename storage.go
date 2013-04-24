@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	"sync"
 )
 
 var dataCenter *storage
@@ -11,8 +10,7 @@ type storage struct { /*{{{*/
 	requestCh chan *request //for outcoming request
 	closeCh   chan bool     //for exit
 
-	waiter sync.WaitGroup    //count the reference
-	data   map[string]Poster //internal data storage
+	data map[string]Poster //internal data storage
 } /*}}}*/
 
 func (d *storage) serve() { /*{{{*/
@@ -45,10 +43,6 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 	switch req.cmd {
 	case ADD:
 		req.err <- loopArgs(func(key string, arg interface{}) error {
-			if _, found := d.data[key]; found {
-				//wait previous reference done
-				d.waiter.Wait()
-			}
 			//add or update it, here only myself refer the map
 			d.data[key] = arg.(Poster)
 			return nil
@@ -56,10 +50,6 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 		return
 	case REMOVE:
 		req.err <- loopArgs(func(key string, arg interface{}) error {
-			if _, found := d.data[key]; found {
-				//wait previous reference done
-				d.waiter.Wait()
-			}
 			//remove it, here only myself refer the map
 			delete(d.data, key)
 			return nil
@@ -89,15 +79,12 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 			}
 		}
 
-		//add a reference
-		d.waiter.Add(1)
 		req.result <- content
 		req.err <- nil
 	}
 } /*}}}*/
 
 func (d *storage) reset() { /*{{{*/
-	d.waiter = sync.WaitGroup{}
 	d.data = make(map[string]Poster)
 } /*}}}*/
 

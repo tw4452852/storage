@@ -52,13 +52,6 @@ type Result struct { /*{{{*/
 	Content []Poster
 } /*}}}*/
 
-//Satisfy the Releaser
-//Release the reference
-func (r *Result) Release() string { /*{{{*/
-	dataCenter.waiter.Done()
-	return ""
-} /*}}}*/
-
 //Satisfy sort.Interface
 func (r *Result) Len() int { /*{{{*/
 	return len(r.Content)
