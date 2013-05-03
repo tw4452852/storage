@@ -15,9 +15,22 @@ const (
 	imagePrefix = "/images/" //add this prefix to the origin image link
 )
 
+//wantChange check whether the image's link need to add prefix
+func wantChange(link []byte) bool {
+	if bytes.HasPrefix(link, []byte("http://")) ||
+		bytes.HasPrefix(link, []byte("https://")) {
+		return false
+	}
+	return true
+}
+
 //add prefix to img link
 func (mr *myRender) Image(out *bytes.Buffer, link, title, alt []byte) {
-	mr.Renderer.Image(out, []byte(imagePrefix+mr.key+"/"+string(link)), title, alt)
+	if wantChange(link) {
+		mr.Renderer.Image(out, []byte(imagePrefix+mr.key+"/"+string(link)), title, alt)
+	} else {
+		mr.Renderer.Image(out, link, title, alt)
+	}
 }
 
 func markdown(input []byte, key string) []byte { /*{{{*/
