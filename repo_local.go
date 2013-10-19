@@ -86,7 +86,7 @@ func (lr *localRepo) update() { /*{{{*/
 
 	if err := filepath.Walk(lr.root, func(path string, info os.FileInfo, err error) error {
 		//only watch the special filetype
-		if info.IsDir() || !filetypeFilter(path) {
+		if info.IsDir() || FindGenerator(path) == nil {
 			return nil
 		}
 		relPath, _ := filepath.Rel(lr.root, path)
@@ -116,7 +116,7 @@ type localPost struct { /*{{{*/
 func newLocalPost(path string) *localPost { /*{{{*/
 	return &localPost{
 		path: path,
-		post: newPost(),
+		post: newPost(FindGenerator(path)),
 	}
 } /*}}}*/
 

@@ -1,17 +1,12 @@
 package storage
 
 import (
-	"crypto/md5"
 	"errors"
-	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"sync"
 	"time"
 )
@@ -111,83 +106,66 @@ func checkConfig(r repos, configPath string) { /*{{{*/
 	panic("not reach")
 } /*}}}*/
 
-//post represent a poster instance
-type post struct { /*{{{*/
-	mutex   sync.RWMutex
+// meta contain the necessary infomations of a post
+type meta struct {
 	key     string
 	title   string
 	date    time.Time
 	content template.HTML
+}
+
+//post represent a poster instance
+type post struct { /*{{{*/
+	gen Generator
+
+	sync.RWMutex
+	meta
 } /*}}}*/
 
-func newPost() *post { /*{{{*/
-	return new(post)
+func newPost(gen Generator) *post { /*{{{*/
+	if gen == nil {
+		panic("a nil Generator in newPost!")
+	}
+	return &post{
+		gen: gen,
+	}
 } /*}}}*/
 
 //implement Poster's common part
 func (p *post) Date() time.Time { /*{{{*/
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+	p.RLock()
+	defer p.RUnlock()
 	return p.date
 } /*}}}*/
 
 func (p *post) Content() template.HTML { /*{{{*/
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+	p.RLock()
+	defer p.RUnlock()
 	return p.content
 } /*}}}*/
 
 func (p *post) Title() template.HTML { /*{{{*/
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+	p.RLock()
+	defer p.RUnlock()
 	return template.HTML(p.title)
 } /*}}}*/
 
 func (p *post) Key() string { /*{{{*/
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+	p.RLock()
+	defer p.RUnlock()
 	return p.key
 } /*}}}*/
 
-func (p *post) Update(reader io.Reader) error { /*{{{*/
-	c, e := ioutil.ReadAll(reader)
+func (p *post) Update(r io.Reader) error { /*{{{*/
+	e, m := p.gen.Generate(r)
 	if e != nil {
 		return e
 	}
-	//title
-	firstLineIndex := strings.Index(string(c), "\n")
-	if firstLineIndex == -1 {
-		return errors.New("generateAll: there must be at least one line\n")
-	}
-	firstLine := strings.TrimSpace(string(c[:firstLineIndex]))
-	sepIndex := strings.Index(firstLine, TitleAndDateSeperator)
-	if sepIndex == -1 {
-		return errors.New("generateAll: can't find seperator for title and date\n")
-	}
-	title := strings.TrimSpace(firstLine[:sepIndex])
-
-	//date
-	t, e := time.Parse(TimePattern, strings.TrimSpace(firstLine[sepIndex+1:]))
-	if e != nil {
-		return e
-	}
-
-	//key
-	h := md5.New()
-	io.WriteString(h, firstLine)
-	key := fmt.Sprintf("%x", h.Sum(nil))
-
-	//content
-	remain := strings.TrimSpace(string(c[firstLineIndex+1:]))
-	content := template.HTML(markdown([]byte(remain), key))
-
-	//update all
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-	p.key = key
-	p.title = title
-	p.date = t
-	p.content = content
+	//update meta
+	p.Lock()
+	p.meta = *m
+	p.Unlock()
+	m = nil
 
 	return nil
 } /*}}}*/
@@ -198,19 +176,4 @@ type StaticErr string
 func (sr StaticErr) Read(p []byte) (int, error) { /*{{{*/
 	log.Println(sr)
 	return 0, errors.New(string(sr))
-} /*}}}*/
-
-//supported filetype
-var filters = []*regexp.Regexp{ /*{{{*/
-	regexp.MustCompile(".*.md$"),
-} /*}}}*/
-
-//filter file type , return pass
-func filetypeFilter(path string) (passed bool) { /*{{{*/
-	for _, filter := range filters {
-		if filter.MatchString(path) {
-			return true
-		}
-	}
-	return false
 } /*}}}*/

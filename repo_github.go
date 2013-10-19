@@ -215,7 +215,7 @@ func (gr *githubRepo) Refresh() { /*{{{*/
 	paths := make([]string, 0)
 	for i := range treeArray {
 		path := treeArray.GetObject(i).GetString("path")
-		if !filetypeFilter(path) {
+		if FindGenerator(path) == nil {
 			continue
 		}
 		paths = append(paths, path)
@@ -295,7 +295,7 @@ func newGithubPost(path string, repo *githubRepo) *githubPost { /*{{{*/
 	return &githubPost{
 		repo: repo,
 		path: path,
-		post: newPost(),
+		post: newPost(FindGenerator(path)),
 	}
 } /*}}}*/
 
