@@ -78,12 +78,6 @@ func (lr *localRepo) clean() { /*{{{*/
 
 //update add new post or update the exist ones
 func (lr *localRepo) update() { /*{{{*/
-	updateLocalPost := func(lp *localPost) {
-		if err := lp.update(); err != nil {
-			log.Printf("update local post(%s) failed: %s\n", lp.path, err)
-		}
-	}
-
 	if err := filepath.Walk(lr.root, func(path string, info os.FileInfo, err error) error {
 		//only watch the special filetype
 		if info.IsDir() || FindGenerator(path) == nil {
@@ -94,14 +88,19 @@ func (lr *localRepo) update() { /*{{{*/
 		if !found {
 			lp := newLocalPost(path)
 			lr.posts[relPath] = lp
-			updateLocalPost(lp)
+			log.Printf("Add a new local post(%s)\n", path)
+			if e := lp.Update(); e != nil {
+				log.Printf("Add local post(%s) failed: %s\n", lp.path, e)
+			}
 			return nil
 		}
 		//update a exist one
-		updateLocalPost(post)
+		if e := post.Update(); e != nil {
+			log.Printf("Update a local post(%s) failed: %s\n", path, e)
+		}
 		return nil
 	}); err != nil {
-		log.Printf("update local repo(%s) error: %s\n",
+		log.Printf("Walk local repo(%s) error: %s\n",
 			lr.root, err)
 	}
 } /*}}}*/
@@ -111,16 +110,18 @@ type localPost struct { /*{{{*/
 	path       string
 	lastUpdate time.Time
 	*post
+	Generator
 } /*}}}*/
 
 func newLocalPost(path string) *localPost { /*{{{*/
 	return &localPost{
-		path: path,
-		post: newPost(FindGenerator(path)),
+		path:      path,
+		post:      newPost(),
+		Generator: FindGenerator(path),
 	}
 } /*}}}*/
 
-func (lp *localPost) update() error { /*{{{*/
+func (lp *localPost) Update() error { /*{{{*/
 	file, err := os.Open(lp.path)
 	if err != nil {
 		return err
@@ -131,9 +132,11 @@ func (lp *localPost) update() error { /*{{{*/
 		return err
 	}
 	if ut := fi.ModTime(); ut.After(lp.lastUpdate) {
-		if err := lp.Update(file); err != nil {
+		err, m := lp.Generate(file, lp)
+		if err != nil {
 			return err
 		}
+		lp.update(m)
 		lp.lastUpdate = ut
 		//update the content in dataCenter
 		if err := Add(lp); err != nil {

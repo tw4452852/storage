@@ -246,30 +246,21 @@ func (gr *githubRepo) clean(paths []string) { /*{{{*/
 
 //the paths has been sorted in increasing order
 func (gr *githubRepo) update(paths []string) { /*{{{*/
-	updateGithubPost := func(gp *githubPost, path string) {
-		m, err := gr.client.get(
-			"repos/" + gr.user + "/" + gr.name + "/contents/" + path)
-		if err != nil {
-			log.Printf("get github post(%s) content failed: %s\n",
-				path, err)
-			return
-		}
-		if err := gp.update(m.GetString("sha"), m.GetString("content")); err != nil {
-			log.Printf("update github post(%s) failed: %s\n", path, err)
-		}
-	}
-
 	for _, path := range paths {
 		post, found := gr.posts[path]
 		if !found {
 			gp := newGithubPost(path, gr)
 			gr.posts[path] = gp
-			log.Printf("add a new github post(%s)\n", path)
-			updateGithubPost(gp, path)
+			log.Printf("Add a new github post(%s)\n", path)
+			if e := gp.Update(); e != nil {
+				log.Printf("Add a new github post(%s) failed: %s\n", path, e)
+			}
 			continue
 		}
 		//update a exist one
-		updateGithubPost(post, path)
+		if e := post.Update(); e != nil {
+			log.Printf("Update a github post(%s) failed: %s\n", path, e)
+		}
 	}
 } /*}}}*/
 
@@ -289,27 +280,37 @@ type githubPost struct { /*{{{*/
 	path string
 	sha  string
 	*post
+	Generator
 } /*}}}*/
 
 func newGithubPost(path string, repo *githubRepo) *githubPost { /*{{{*/
 	return &githubPost{
-		repo: repo,
-		path: path,
-		post: newPost(FindGenerator(path)),
+		repo:      repo,
+		path:      path,
+		post:      newPost(),
+		Generator: FindGenerator(path),
 	}
 } /*}}}*/
 
-func (gp *githubPost) update(sha, encodedContent string) error { /*{{{*/
+func (gp *githubPost) Update() error { /*{{{*/
+	ms, err := gp.repo.client.get(
+		"repos/" + gp.repo.user + "/" + gp.repo.name + "/contents/" + gp.path)
+	if err != nil {
+		return err
+	}
+	sha, encodedContent := ms.GetString("sha"), ms.GetString("content")
 	if sha == gp.sha {
 		//no need to update
 		return nil
 	}
 	encodedContent = strings.Replace(encodedContent, "\n", "", -1)
-	err := gp.Update(base64.NewDecoder(base64.StdEncoding,
-		strings.NewReader(encodedContent)))
+	var m *meta
+	err, m = gp.Generate(base64.NewDecoder(base64.StdEncoding,
+		strings.NewReader(encodedContent)), gp)
 	if err != nil {
 		return err
 	}
+	gp.update(m)
 	log.Printf("update a github post(%s)\n", gp.path)
 	//add it to the dataCenter
 	if err = Add(gp); err != nil {

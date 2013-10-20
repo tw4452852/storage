@@ -109,7 +109,7 @@ func TestMarkDownGenerate(t *testing.T) { /*{{{*/
 			c.prepare()
 		}
 		lp := newLocalPost(c.path)
-		if err := matchError(c.updateErr, lp.update()); err != nil {
+		if err := matchError(c.updateErr, lp.Update()); err != nil {
 			return err
 		}
 		if c.updateErr != nil && c.expect == nil {
@@ -183,7 +183,7 @@ func TestMarkDownImage(t *testing.T) { /*{{{*/
 			c.prepare()
 		}
 		lp := newLocalPost(c.path)
-		if err := matchError(c.updateErr, lp.update()); err != nil {
+		if err := matchError(c.updateErr, lp.Update()); err != nil {
 			return err
 		}
 		if c.updateErr != nil && c.expect == nil {

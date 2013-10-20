@@ -3,7 +3,6 @@ package storage
 import (
 	"errors"
 	"html/template"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -116,19 +115,12 @@ type meta struct {
 
 //post represent a poster instance
 type post struct { /*{{{*/
-	gen Generator
-
 	sync.RWMutex
 	meta
 } /*}}}*/
 
-func newPost(gen Generator) *post { /*{{{*/
-	if gen == nil {
-		panic("a nil Generator in newPost!")
-	}
-	return &post{
-		gen: gen,
-	}
+func newPost() *post { /*{{{*/
+	return new(post)
 } /*}}}*/
 
 //implement Poster's common part
@@ -156,18 +148,12 @@ func (p *post) Key() string { /*{{{*/
 	return p.key
 } /*}}}*/
 
-func (p *post) Update(r io.Reader) error { /*{{{*/
-	e, m := p.gen.Generate(r)
-	if e != nil {
-		return e
-	}
+func (p *post) update(m *meta) { /*{{{*/
 	//update meta
 	p.Lock()
 	p.meta = *m
 	p.Unlock()
 	m = nil
-
-	return nil
 } /*}}}*/
 
 type StaticErr string

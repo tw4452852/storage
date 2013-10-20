@@ -94,7 +94,7 @@ is indented (however you like)</pre></div>
 
 
 
-	<div class="code">
+	<div class="playground">
 
 
 <pre><span num="1">package main</span>
@@ -145,7 +145,7 @@ is indented (however you like)</pre></div>
 			c.prepare()
 		}
 		lp := newLocalPost(c.path)
-		if err := matchError(c.updateErr, lp.update()); err != nil {
+		if err := matchError(c.updateErr, lp.Update()); err != nil {
 			return err
 		}
 		if c.updateErr != nil && c.expect == nil {

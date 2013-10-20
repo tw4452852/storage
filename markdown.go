@@ -38,7 +38,7 @@ func (m markdownGenerator) Match(filename string) bool {
 	return m.matcher.MatchString(filename)
 }
 
-func (markdownGenerator) Generate(input io.Reader) (error, *meta) {
+func (markdownGenerator) Generate(input io.Reader, static Staticer) (error, *meta) {
 	c, e := ioutil.ReadAll(input)
 	if e != nil {
 		return e, nil

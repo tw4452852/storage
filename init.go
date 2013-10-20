@@ -26,12 +26,16 @@ type Keyer interface { /*{{{*/
 	Key() string
 } /*}}}*/
 
+type Staticer interface {
+	Static(string) io.Reader
+}
+
 //Poster represet a post
 type Poster interface { /*{{{*/
 	Date() time.Time
 	Content() template.HTML
 	Title() template.HTML
 	Keyer
-	Static(string) io.Reader
-	Update(io.Reader) error
+	Staticer
+	Update() error
 } /*}}}*/

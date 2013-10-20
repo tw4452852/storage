@@ -28,11 +28,11 @@ Some More text
 
 Further Text, including invocations like:
 
-.code ./testdata/localRepo/x.go /^func main/,/^}/
-.play ./testdata/localRepo/x.go
+.code ./x.go /^func main/,/^}/
+.play x.go
 .image image.jpg
 .iframe http://foo
 .link http://foo label
-.html ./testdata/localRepo/file.html
+.html file.html
 
 Again, more text

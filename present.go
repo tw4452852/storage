@@ -5,6 +5,7 @@ import (
 	"code.google.com/p/go.tools/present"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"regexp"
 	"strings"
 )
@@ -107,6 +108,9 @@ func init() {
 	if e != nil {
 		panic(e)
 	}
+
+	// enable playgroud
+	present.PlayEnabled = true
 }
 
 type presentGenerator struct {
@@ -117,8 +121,15 @@ func (p presentGenerator) Match(filename string) bool {
 	return p.matcher.MatchString(filename)
 }
 
-func (presentGenerator) Generate(input io.Reader) (error, *meta) {
-	doc, err := present.Parse(input, "", 0)
+func (presentGenerator) Generate(input io.Reader, s Staticer) (error, *meta) {
+	ctx := &present.Context{func(filename string) ([]byte, error) {
+		r := s.Static(filename)
+		if closer, ok := r.(io.Closer); ok {
+			defer closer.Close()
+		}
+		return ioutil.ReadAll(r)
+	}}
+	doc, err := ctx.Parse(input, "", 0)
 	if err != nil {
 		return err, nil
 	}

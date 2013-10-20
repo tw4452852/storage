@@ -8,7 +8,7 @@ type Generator interface {
 	// Match return if the filename is match this Generator
 	Match(filename string) bool
 	// Generate the meta data of a post
-	Generate(input io.Reader) (error, *meta)
+	Generate(io.Reader, Staticer) (error, *meta)
 }
 
 var generators []Generator
