@@ -2,9 +2,7 @@ package storage
 
 import (
 	"bytes"
-	"crypto/md5"
 	"errors"
-	"fmt"
 	"github.com/russross/blackfriday"
 	"html/template"
 	"io"
@@ -64,9 +62,7 @@ func (markdownGenerator) Generate(input io.Reader) (error, *meta) {
 	}
 
 	//key
-	h := md5.New()
-	io.WriteString(h, firstLine)
-	key := fmt.Sprintf("%x", h.Sum(nil))
+	key := strings.Replace(title, " ", "_", -1)
 
 	//content
 	remain := strings.TrimSpace(string(c[firstLineIndex+1:]))
