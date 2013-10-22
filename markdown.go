@@ -89,6 +89,12 @@ type myRender struct {
 	blackfriday.Renderer
 }
 
+func (mr *myRender) BlockCode(out *bytes.Buffer, text []byte, lang string) {
+	out.WriteString(`<div class="code">`)
+	mr.Renderer.BlockCode(out, text, lang)
+	out.WriteString(`</div>`)
+}
+
 //add prefix to img link
 func (mr *myRender) Image(out *bytes.Buffer, link, title, alt []byte) {
 	if wantChange(link) {
