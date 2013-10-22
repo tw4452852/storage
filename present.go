@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
-	"strings"
 )
 
 var presentTmpl *template.Template
@@ -138,11 +137,12 @@ func (presentGenerator) Generate(input io.Reader, s Staticer) (error, *meta) {
 	if err != nil {
 		return err, nil
 	}
-	key := strings.Replace(doc.Title, " ", "_", -1)
+	key := title2Key(doc.Title)
 	return nil, &meta{
 		title:   doc.Title,
 		date:    doc.Time,
 		key:     key,
 		content: template.HTML(b.String()),
+		tags:    doc.Tags,
 	}
 }

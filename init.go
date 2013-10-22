@@ -17,8 +17,7 @@ func Init(configPath string) { /*{{{*/
 } /*}}}*/
 
 const ( /*{{{*/
-	TitleAndDateSeperator = "|"
-	TimePattern           = "2006-01-02"
+	TimePattern = "2006-01-02"
 ) /*}}}*/
 
 //Keyer represent a key to post
@@ -38,4 +37,5 @@ type Poster interface { /*{{{*/
 	Keyer
 	Staticer
 	Update() error
+	Tags() []string
 } /*}}}*/

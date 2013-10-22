@@ -24,6 +24,7 @@ const (
 		blackfriday.EXTENSION_AUTOLINK |
 		blackfriday.EXTENSION_STRIKETHROUGH |
 		blackfriday.EXTENSION_SPACE_HEADERS
+	seperator = "|"
 )
 
 func init() {
@@ -49,21 +50,27 @@ func (markdownGenerator) Generate(input io.Reader, static Staticer) (error, *met
 		return errors.New("generateAll: there must be at least one line\n"), nil
 	}
 	firstLine := strings.TrimSpace(string(c[:firstLineIndex]))
-	sepIndex := strings.Index(firstLine, TitleAndDateSeperator)
-	if sepIndex == -1 {
-		return errors.New("generateAll: can't find seperator for title and date\n"), nil
+	titleDateTags := strings.Split(firstLine, seperator)
+	if len(titleDateTags) != 3 {
+		return errors.New("generateAll: can't find title, date and tags\n"), nil
 	}
-	title := strings.TrimSpace(firstLine[:sepIndex])
-
+	title := strings.TrimSpace(titleDateTags[0])
 	//date
-	t, e := time.Parse(TimePattern, strings.TrimSpace(firstLine[sepIndex+1:]))
+	t, e := time.Parse(TimePattern, strings.TrimSpace(titleDateTags[1]))
 	if e != nil {
 		return e, nil
 	}
-
 	//key
-	key := strings.Replace(title, " ", "_", -1)
-
+	key := title2Key(title)
+	//tags
+	tags := []string{}
+	tagsString := strings.TrimSpace(titleDateTags[2])
+	if tagsString != "" {
+		tags = strings.Split(tagsString, ",")
+		for i, tag := range tags {
+			tags[i] = strings.TrimSpace(tag)
+		}
+	}
 	//content
 	remain := strings.TrimSpace(string(c[firstLineIndex+1:]))
 	content := template.HTML(markdown([]byte(remain), key))
@@ -73,6 +80,7 @@ func (markdownGenerator) Generate(input io.Reader, static Staticer) (error, *met
 		title:   title,
 		date:    t,
 		content: content,
+		tags:    tags,
 	}
 }
 

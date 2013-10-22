@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -13,6 +14,7 @@ import (
 func TestMarkDownGenerate(t *testing.T) { /*{{{*/
 	type Expect struct {
 		path, title, date, content string
+		tags                       []string
 	}
 	type Case struct {
 		prepare   func()
@@ -32,7 +34,7 @@ func TestMarkDownGenerate(t *testing.T) { /*{{{*/
 		{
 			func() {
 				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte("hello world | 2012-12-01 \n# title hello world \n"), 0777)
+					[]byte("hello world | 2012-12-01 |tag1, tag2\n# title hello world \n"), 0777)
 			},
 			func() {
 				os.Remove(filepath.Join(repoRoot, "11.md"))
@@ -44,12 +46,13 @@ func TestMarkDownGenerate(t *testing.T) { /*{{{*/
 				title:   "hello world",
 				date:    "2012-12-01",
 				content: "<h1>title hello world</h1>\n",
+				tags:    []string{"tag1", "tag2"},
 			},
 		},
 		{
 			func() {
 				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte("hello world | 2012-12-01 \n "), 0777)
+					[]byte("hello world | 2012-12-01 | \n "), 0777)
 			},
 			func() {
 				os.Remove(filepath.Join(repoRoot, "11.md"))
@@ -61,12 +64,13 @@ func TestMarkDownGenerate(t *testing.T) { /*{{{*/
 				title:   "hello world",
 				date:    "2012-12-01",
 				content: "",
+				tags:    []string{},
 			},
 		},
 		{
 			func() {
 				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte(" hello world | 2012-12-01"), 0777)
+					[]byte(" hello world | 2012-12-01 | tag1"), 0777)
 			},
 			func() {
 				os.Remove(filepath.Join(repoRoot, "11.md"))
@@ -84,7 +88,7 @@ func TestMarkDownGenerate(t *testing.T) { /*{{{*/
 				os.Remove(filepath.Join(repoRoot, "11.md"))
 			},
 			filepath.Join(repoRoot, "11.md"),
-			errors.New("generateAll: can't find seperator"),
+			errors.New("generateAll: can't find title, date and tags"),
 			nil,
 		},
 		{
@@ -120,9 +124,23 @@ func TestMarkDownGenerate(t *testing.T) { /*{{{*/
 			title:   string(lp.Title()),
 			date:    lp.Date().Format(TimePattern),
 			content: string(lp.Content()),
+			tags:    lp.Tags(),
 		}
-		if *real != *c.expect {
-			return fmt.Errorf("expect %v, but get %v\n", *c.expect, *real)
+		if real.path != c.expect.path {
+			return fmt.Errorf("path not equal\n")
+		}
+		if real.title != c.expect.title {
+			return fmt.Errorf("title not equal\n")
+		}
+		if real.date != c.expect.date {
+			return fmt.Errorf("date not equal\n")
+		}
+		if real.content != c.expect.content {
+			return fmt.Errorf("content not equal\n")
+		}
+		if !reflect.DeepEqual(real.tags, c.expect.tags) {
+			return fmt.Errorf("tags not equal: %#V - %#V\n", real.tags,
+				c.expect.tags)
 		}
 		return nil
 	}
@@ -149,7 +167,7 @@ func TestMarkDownImage(t *testing.T) { /*{{{*/
 		{
 			func() {
 				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte("hello world | 2012-12-01 \n![1](/1/1.png)\n"), 0777)
+					[]byte("hello world | 2012-12-01 | \n![1](/1/1.png)\n"), 0777)
 			},
 			func() {
 				os.Remove(filepath.Join(repoRoot, "11.md"))
@@ -163,7 +181,7 @@ func TestMarkDownImage(t *testing.T) { /*{{{*/
 		{
 			func() {
 				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte("hello world | 2012-12-01 \n![1](1/1.png)\n"), 0777)
+					[]byte("hello world | 2012-12-01 |tag1\n![1](1/1.png)\n"), 0777)
 			},
 			func() {
 				os.Remove(filepath.Join(repoRoot, "11.md"))

@@ -36,6 +36,9 @@ func (e *entry) Static(string) io.Reader {
 func (e *entry) Update() error {
 	return nil
 }
+func (e *entry) Tags() []string {
+	return nil
+}
 
 type invalidEntry struct {
 	data string
