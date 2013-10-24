@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	imagePrefix = "/images/" //add this prefix to the origin image link
-	htmlFlags   = blackfriday.HTML_USE_XHTML |
+	htmlFlags = blackfriday.HTML_USE_XHTML |
 		blackfriday.HTML_USE_SMARTYPANTS |
 		blackfriday.HTML_SMARTYPANTS_FRACTIONS |
 		blackfriday.HTML_SMARTYPANTS_LATEX_DASHES
@@ -97,20 +96,7 @@ func (mr *myRender) BlockCode(out *bytes.Buffer, text []byte, lang string) {
 
 //add prefix to img link
 func (mr *myRender) Image(out *bytes.Buffer, link, title, alt []byte) {
-	if wantChange(link) {
-		mr.Renderer.Image(out, []byte(imagePrefix+mr.key+"/"+string(link)), title, alt)
-	} else {
-		mr.Renderer.Image(out, link, title, alt)
-	}
-}
-
-//wantChange check whether the image's link need to add prefix
-func wantChange(link []byte) bool {
-	if bytes.HasPrefix(link, []byte("http://")) ||
-		bytes.HasPrefix(link, []byte("https://")) {
-		return false
-	}
-	return true
+	mr.Renderer.Image(out, []byte(generateImageLink(mr.key, string(link))), title, alt)
 }
 
 func markdown(input []byte, key string) []byte { /*{{{*/
@@ -119,6 +105,5 @@ func markdown(input []byte, key string) []byte { /*{{{*/
 		key:      key,
 		Renderer: blackfriday.HtmlRenderer(htmlFlags, "", ""),
 	}
-
 	return blackfriday.Markdown(input, renderer, extensions)
 } /*}}}*/

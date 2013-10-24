@@ -132,17 +132,38 @@ func (presentGenerator) Generate(input io.Reader, s Staticer) (error, *meta) {
 	if err != nil {
 		return err, nil
 	}
+	key := title2Key(doc.Title)
+	fixImageLink(doc, key)
+	// TODO: buffer pool
 	b := new(bytes.Buffer)
 	err = doc.Render(b, presentTmpl)
 	if err != nil {
 		return err, nil
 	}
-	key := title2Key(doc.Title)
 	return nil, &meta{
 		title:   doc.Title,
 		date:    doc.Time,
 		key:     key,
 		content: template.HTML(b.String()),
 		tags:    doc.Tags,
+	}
+}
+
+func fixImageLink(doc *present.Doc, key string) {
+	var checkElem func(present.Elem) present.Elem
+	checkElem = func(e present.Elem) present.Elem {
+		if s, ok := e.(present.Section); ok {
+			for i, e := range s.Elem {
+				s.Elem[i] = checkElem(e)
+			}
+		}
+		if image, ok := e.(present.Image); ok {
+			image.URL = generateImageLink(key, image.URL)
+			return image
+		}
+		return e
+	}
+	for i, s := range doc.Sections {
+		doc.Sections[i] = checkElem(s).(present.Section)
 	}
 }

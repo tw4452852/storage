@@ -68,3 +68,20 @@ func (p *post) update(m *meta) { /*{{{*/
 func title2Key(title string) string {
 	return strings.Replace(title, " ", "_", -1)
 }
+
+const imagePrefix = "/images/" //add this prefix to the origin image link
+func generateImageLink(key, link string) string {
+	if needChangeImageLink(link) {
+		return imagePrefix + key + "/" + link
+	}
+	return link
+}
+
+//wantChange check whether the image's link need to add prefix
+func needChangeImageLink(link string) bool {
+	if strings.HasPrefix(link, "http://") ||
+		strings.HasPrefix(link, "https://") {
+		return false
+	}
+	return true
+}

@@ -31,6 +31,7 @@ Further Text, including invocations like:
 .code ./x.go /^func main/,/^}/
 .play x.go
 .image image.jpg
+.image http://foo/image.jpg
 .iframe http://foo
 .link http://foo label
 .html file.html

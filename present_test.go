@@ -115,7 +115,11 @@ is indented (however you like)</pre></div>
 
 
 <div class="image">
-  <img src="image.jpg">
+  <img src="/images/Title/image.jpg">
+</div>
+
+<div class="image">
+  <img src="http://foo/image.jpg">
 </div>
 
 <div class="iframe">
