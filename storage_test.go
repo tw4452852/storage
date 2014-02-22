@@ -39,6 +39,9 @@ func (e *entry) Update() error {
 func (e *entry) Tags() []string {
 	return nil
 }
+func (e *entry) IsSlide() bool {
+	return false
+}
 
 type invalidEntry struct {
 	data string

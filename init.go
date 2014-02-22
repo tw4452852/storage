@@ -38,4 +38,5 @@ type Poster interface { /*{{{*/
 	Staticer
 	Update() error
 	Tags() []string
+	IsSlide() bool
 } /*}}}*/

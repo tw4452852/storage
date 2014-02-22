@@ -14,6 +14,7 @@ type meta struct {
 	date    time.Time
 	content template.HTML
 	tags    []string
+	isSlide bool
 }
 
 //post represent a poster instance
@@ -55,6 +56,12 @@ func (p *post) Tags() []string {
 	p.RLock()
 	defer p.RUnlock()
 	return p.tags
+}
+
+func (p *post) IsSlide() bool {
+	p.RLock()
+	defer p.RUnlock()
+	return p.isSlide
 }
 
 func (p *post) update(m *meta) { /*{{{*/

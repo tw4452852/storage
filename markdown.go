@@ -80,6 +80,7 @@ func (MarkdownGenerator) Generate(input io.Reader, static Staticer) (error, *met
 		date:    t,
 		content: content,
 		tags:    tags,
+		isSlide: false,
 	}
 }
 
