@@ -58,8 +58,8 @@ func TestLocalRepo(t *testing.T) { /*{{{*/
 			prepare: nil,
 			check: func() {
 				expect := map[string]*localPost{
-					"1.md":   newLocalPost(filepath.Join(repoRoot, "1.md")),
-					"1.prst": newLocalPost(filepath.Join(repoRoot, "1.prst")),
+					"1.md":      newLocalPost(filepath.Join(repoRoot, "1.md")),
+					"1.article": newLocalPost(filepath.Join(repoRoot, "1.article")),
 					"level1" + string(filepath.Separator) + "1.md": newLocalPost(filepath.Join(repoRoot, "level1/1.md")),
 				}
 				lr.update()
@@ -77,8 +77,8 @@ func TestLocalRepo(t *testing.T) { /*{{{*/
 			},
 			check: func() {
 				expect := map[string]*localPost{
-					"1.md":   newLocalPost(filepath.Join(repoRoot, "1.md")),
-					"1.prst": newLocalPost(filepath.Join(repoRoot, "1.prst")),
+					"1.md":      newLocalPost(filepath.Join(repoRoot, "1.md")),
+					"1.article": newLocalPost(filepath.Join(repoRoot, "1.article")),
 					"level1" + string(filepath.Separator) + "1.md": newLocalPost(filepath.Join(repoRoot, "level1/1.md")),
 				}
 				lr.clean()

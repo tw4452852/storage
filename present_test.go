@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestPresentGenerate(t *testing.T) {
+func TestArticleGenerate(t *testing.T) {
 	type Expect struct {
 		path, title, date, content string
 		tags                       []string
@@ -24,17 +24,17 @@ func TestPresentGenerate(t *testing.T) {
 		{
 			nil,
 			nil,
-			"./testdata/noexist/1.prst",
+			"./testdata/noexist/1.article",
 			pathNotFound,
 			nil,
 		},
 		{
 			nil,
 			nil,
-			filepath.Join(repoRoot, "1.prst"),
+			filepath.Join(repoRoot, "1.article"),
 			nil,
 			&Expect{
-				path:  filepath.Join(repoRoot, "1.prst"),
+				path:  filepath.Join(repoRoot, "1.article"),
 				title: "Title",
 				date:  "2006-01-02",
 				content: `

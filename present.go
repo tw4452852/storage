@@ -9,9 +9,12 @@ import (
 	"regexp"
 )
 
-var presentTmpl *template.Template
+var (
+	articleTmpl *template.Template
+)
 
-const presentTmplString = `
+const (
+	articleTmplString = `
 {{/* This doc template is given to the present tool to format articles.  */}}
 
 {{define "root"}}
@@ -92,9 +95,10 @@ const presentTmplString = `
 
 {{define "html"}}{{.HTML}}{{end}}
 `
+)
 
 func init() {
-	RegisterGenerator(presentGenerator{regexp.MustCompile(".*.prst$")})
+	RegisterGenerator(ArticleGenerator{regexp.MustCompile(".*.article$")})
 
 	// init presentTmpl
 	funcMap := template.FuncMap{
@@ -103,7 +107,7 @@ func init() {
 		},
 	}
 	var e error
-	presentTmpl, e = present.Template().Funcs(funcMap).Parse(presentTmplString)
+	articleTmpl, e = present.Template().Funcs(funcMap).Parse(articleTmplString)
 	if e != nil {
 		panic(e)
 	}
@@ -112,15 +116,25 @@ func init() {
 	present.PlayEnabled = true
 }
 
+type ArticleGenerator presentGenerator
+
+func (ag ArticleGenerator) Generate(input io.Reader, s Staticer) (error, *meta) {
+	return presentGenerator(ag).generate(input, s, articleTmpl)
+}
+
+func (ag ArticleGenerator) Match(filename string) bool {
+	return presentGenerator(ag).match(filename)
+}
+
 type presentGenerator struct {
 	matcher *regexp.Regexp
 }
 
-func (p presentGenerator) Match(filename string) bool {
+func (p presentGenerator) match(filename string) bool {
 	return p.matcher.MatchString(filename)
 }
 
-func (presentGenerator) Generate(input io.Reader, s Staticer) (error, *meta) {
+func (presentGenerator) generate(input io.Reader, s Staticer, tmpl *template.Template) (error, *meta) {
 	ctx := &present.Context{func(filename string) ([]byte, error) {
 		r := s.Static(filename)
 		if closer, ok := r.(io.Closer); ok {
@@ -136,7 +150,7 @@ func (presentGenerator) Generate(input io.Reader, s Staticer) (error, *meta) {
 	fixImageLink(doc, key)
 	// TODO: buffer pool
 	b := new(bytes.Buffer)
-	err = doc.Render(b, presentTmpl)
+	err = doc.Render(b, tmpl)
 	if err != nil {
 		return err, nil
 	}
