@@ -27,18 +27,18 @@ const (
 )
 
 func init() {
-	RegisterGenerator(markdownGenerator{regexp.MustCompile(".*.md$")})
+	RegisterGenerator(MarkdownGenerator{regexp.MustCompile(".*.md$")})
 }
 
-type markdownGenerator struct {
+type MarkdownGenerator struct {
 	matcher *regexp.Regexp
 }
 
-func (m markdownGenerator) Match(filename string) bool {
+func (m MarkdownGenerator) Match(filename string) bool {
 	return m.matcher.MatchString(filename)
 }
 
-func (markdownGenerator) Generate(input io.Reader, static Staticer) (error, *meta) {
+func (MarkdownGenerator) Generate(input io.Reader, static Staticer) (error, *meta) {
 	c, e := ioutil.ReadAll(input)
 	if e != nil {
 		return e, nil
