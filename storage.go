@@ -6,10 +6,9 @@ import (
 )
 
 type storage struct { /*{{{*/
-	requestCh chan *request //for outcoming request
-	closeCh   chan bool     //for exit
-
-	data map[string]Poster //internal data storage
+	requestCh chan *request     //for outcoming request
+	closeCh   chan bool         //for exit
+	data      map[string]Poster //internal data storage
 } /*}}}*/
 
 var (
@@ -69,7 +68,6 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 		return
 	case REMOVE:
 		req.err <- loopArgs(func(key string, arg interface{}) error {
-			//remove it, here only myself refer the map
 			if poster, ok := d.data[key]; ok {
 				delete(d.data, key)
 				if debug {
@@ -87,6 +85,7 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 				content = append(content, v)
 				return nil
 			}
+
 			//not found
 			return errors.New("can't find want you want")
 		})

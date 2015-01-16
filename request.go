@@ -22,7 +22,7 @@ func Add(args ...Poster) error { /*{{{*/
 	r := &request{
 		cmd:  ADD,
 		args: make([]interface{}, len(args)),
-		err:  make(chan error),
+		err:  make(chan error, 1),
 	}
 	for i, p := range args {
 		r.args[i] = p
@@ -38,7 +38,7 @@ func Remove(args ...Keyer) error { /*{{{*/
 	r := &request{
 		cmd:  REMOVE,
 		args: make([]interface{}, len(args)),
-		err:  make(chan error),
+		err:  make(chan error, 1),
 	}
 	for i, k := range args {
 		r.args[i] = k
@@ -74,7 +74,7 @@ func Get(args ...Keyer) (*Result, error) { /*{{{*/
 		cmd:    GET,
 		args:   make([]interface{}, len(args)),
 		result: make(chan []Poster, 1),
-		err:    make(chan error),
+		err:    make(chan error, 1),
 	}
 	for i, k := range args {
 		r.args[i] = k
