@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"sync"
 	"testing"
 	"time"
 )
 
 func init() {
-	Init("./testdata")
+	debug = false
+	Init("src/github.com/tw4452852/storage/testdata/config.xml")
 }
 
 type entry struct {
@@ -333,3 +335,82 @@ check:
 	}
 	return nil
 } /*}}}*/
+
+func BenchmarkAddUpdate(b *testing.B) {
+	b.StopTimer()
+	dataCenter.reset()
+	waiter := &sync.WaitGroup{}
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		waiter.Add(3)
+		for j := 0; j < 3; j++ {
+			go func(j int) {
+				Add(ents[j])
+				waiter.Done()
+			}(j)
+		}
+		waiter.Wait()
+	}
+}
+
+func BenchmarkAddRemove(b *testing.B) {
+	b.StopTimer()
+	dataCenter.reset()
+	waiter := &sync.WaitGroup{}
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		waiter.Add(3)
+		for j := 0; j < 3; j++ {
+			go func(j int) {
+				Add(ents[j])
+				Remove(ents[j])
+				waiter.Done()
+			}(j)
+		}
+		waiter.Wait()
+	}
+}
+
+func BenchmarkGet(b *testing.B) {
+	b.StopTimer()
+	dataCenter.reset()
+	Add(ents[0])
+	Add(ents[1])
+	Add(ents[2])
+	waiter := &sync.WaitGroup{}
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		waiter.Add(3)
+		for j := 0; j < 3; j++ {
+			go func(j int) {
+				Get(ents[j])
+				waiter.Done()
+			}(j)
+		}
+		waiter.Wait()
+	}
+}
+
+func BenchmarkAll(b *testing.B) {
+	b.StopTimer()
+	dataCenter.reset()
+	waiter := &sync.WaitGroup{}
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		waiter.Add(3)
+		for j := 0; j < 3; j++ {
+			go func(j int) {
+				Add(ents[j])
+				Get(ents[j])
+				Add(ents[j])
+				Remove(ents[j])
+				waiter.Done()
+			}(j)
+		}
+		waiter.Wait()
+	}
+}

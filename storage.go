@@ -5,8 +5,6 @@ import (
 	"log"
 )
 
-var dataCenter *storage
-
 type storage struct { /*{{{*/
 	requestCh chan *request //for outcoming request
 	closeCh   chan bool     //for exit
@@ -23,7 +21,6 @@ func initStorage() {
 	dataCenter = &storage{
 		requestCh: make(chan *request),
 		closeCh:   make(chan bool),
-		rwlock:    &sync.RWMutex{},
 		data:      make(map[string]Poster),
 	}
 	go dataCenter.serve()
