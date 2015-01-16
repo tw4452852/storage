@@ -14,6 +14,21 @@ type storage struct { /*{{{*/
 	data map[string]Poster //internal data storage
 } /*}}}*/
 
+var (
+	dataCenter *storage
+	debug      = true
+)
+
+func initStorage() {
+	dataCenter = &storage{
+		requestCh: make(chan *request),
+		closeCh:   make(chan bool),
+		rwlock:    &sync.RWMutex{},
+		data:      make(map[string]Poster),
+	}
+	go dataCenter.serve()
+}
+
 func (d *storage) serve() { /*{{{*/
 	for {
 		select {
@@ -47,8 +62,10 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 			//add or update it, here only myself refer the map
 			if poster, ok := arg.(Poster); ok {
 				d.data[key] = arg.(Poster)
-				log.Printf("Add: key(%s), title(%s), date(%s)\n",
-					poster.Key(), poster.Title(), poster.Date())
+				if debug {
+					log.Printf("Add: key(%s), title(%s), date(%s)\n",
+						poster.Key(), poster.Title(), poster.Date())
+				}
 			}
 			return nil
 		})
@@ -58,8 +75,10 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 			//remove it, here only myself refer the map
 			if poster, ok := d.data[key]; ok {
 				delete(d.data, key)
-				log.Printf("Remove: key(%s), title(%s), date(%s)\n",
-					key, poster.Title(), poster.Date())
+				if debug {
+					log.Printf("Remove: key(%s), title(%s), date(%s)\n",
+						key, poster.Title(), poster.Date())
+				}
 			}
 			return nil
 		})

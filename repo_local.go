@@ -88,7 +88,9 @@ func (lr *localRepo) update() { /*{{{*/
 		if !found {
 			lp := newLocalPost(path)
 			lr.posts[relPath] = lp
-			log.Printf("Add a new local post(%s)\n", path)
+			if debug {
+				log.Printf("Add a new local post(%s)\n", path)
+			}
 			if e := lp.Update(); e != nil {
 				log.Printf("Add local post(%s) failed: %s\n", lp.path, e)
 			}

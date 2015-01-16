@@ -251,7 +251,9 @@ func (gr *githubRepo) update(paths []string) { /*{{{*/
 		if !found {
 			gp := newGithubPost(path, gr)
 			gr.posts[path] = gp
-			log.Printf("Add a new github post(%s)\n", path)
+			if debug {
+				log.Printf("Add a new github post(%s)\n", path)
+			}
 			if e := gp.Update(); e != nil {
 				log.Printf("Add a new github post(%s) failed: %s\n", path, e)
 			}
@@ -311,7 +313,9 @@ func (gp *githubPost) Update() error { /*{{{*/
 		return err
 	}
 	gp.update(m)
-	log.Printf("update a github post(%s)\n", gp.path)
+	if debug {
+		log.Printf("update a github post(%s)\n", gp.path)
+	}
 	//add it to the dataCenter
 	if err = Add(gp); err != nil {
 		return err
