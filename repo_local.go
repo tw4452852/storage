@@ -80,12 +80,15 @@ func (lr *localRepo) clean() { /*{{{*/
 func (lr *localRepo) update() { /*{{{*/
 	if err := filepath.Walk(lr.root, func(path string, info os.FileInfo, err error) error {
 		//only watch the special filetype
-		if info.IsDir() || FindGenerator(path) == nil {
+		if info.IsDir() {
 			return nil
 		}
 		relPath, _ := filepath.Rel(lr.root, path)
 		post, found := lr.posts[relPath]
 		if !found {
+			if FindGenerator(path) == nil {
+				return nil
+			}
 			lp := newLocalPost(path)
 			lr.posts[relPath] = lp
 			if debug {
