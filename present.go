@@ -6,7 +6,7 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
-	"regexp"
+	"strings"
 )
 
 var (
@@ -183,10 +183,20 @@ const (
 	`
 )
 
-func init() {
-	RegisterGenerator(ArticleGenerator{regexp.MustCompile(".*.article$")})
-	RegisterGenerator(SlideGenerator{regexp.MustCompile(".*.slide$")})
+var (
+	ArticleGenerator = presentGenerator{
+		match: func(filename string) bool {
+			return strings.HasSuffix(filename, ".article")
+		},
+	}
+	SlideGenerator = presentGenerator{
+		match: func(filename string) bool {
+			return strings.HasSuffix(filename, ".slide")
+		},
+	}
+)
 
+func init() {
 	funcMap := template.FuncMap{
 		"sectioned": func(d *present.Doc) bool {
 			return len(d.Sections) > 1
@@ -206,34 +216,25 @@ func init() {
 
 	// enable playgroud
 	present.PlayEnabled = true
-}
 
-type ArticleGenerator presentGenerator
+	ArticleGenerator.tmpl = articleTmpl
+	SlideGenerator.tmpl = slideTmpl
 
-func (ag ArticleGenerator) Generate(input io.Reader, s Staticer) (error, *meta) {
-	return presentGenerator(ag).generate(input, s, articleTmpl)
-}
-
-func (ag ArticleGenerator) Match(filename string) bool {
-	return presentGenerator(ag).match(filename)
-}
-
-type SlideGenerator presentGenerator
-
-func (sg SlideGenerator) Generate(input io.Reader, s Staticer) (error, *meta) {
-	return presentGenerator(sg).generate(input, s, slideTmpl)
-}
-
-func (sg SlideGenerator) Match(filename string) bool {
-	return presentGenerator(sg).match(filename)
+	RegisterGenerator(ArticleGenerator)
+	RegisterGenerator(SlideGenerator)
 }
 
 type presentGenerator struct {
-	matcher *regexp.Regexp
+	match func(string) bool
+	tmpl  *template.Template
 }
 
-func (p presentGenerator) match(filename string) bool {
-	return p.matcher.MatchString(filename)
+func (p presentGenerator) Match(filename string) bool {
+	return p.match(filename)
+}
+
+func (p presentGenerator) Generate(input io.Reader, s Staticer) (error, *meta) {
+	return p.generate(input, s, p.tmpl)
 }
 
 func (presentGenerator) generate(input io.Reader, s Staticer, tmpl *template.Template) (error, *meta) {

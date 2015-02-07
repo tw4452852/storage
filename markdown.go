@@ -3,13 +3,13 @@ package storage
 import (
 	"bytes"
 	"errors"
-	"github.com/russross/blackfriday"
 	"html/template"
 	"io"
 	"io/ioutil"
-	"regexp"
 	"strings"
 	"time"
+
+	"github.com/russross/blackfriday"
 )
 
 const (
@@ -27,15 +27,13 @@ const (
 )
 
 func init() {
-	RegisterGenerator(MarkdownGenerator{regexp.MustCompile(".*.md$")})
+	RegisterGenerator(MarkdownGenerator{})
 }
 
-type MarkdownGenerator struct {
-	matcher *regexp.Regexp
-}
+type MarkdownGenerator struct{}
 
 func (m MarkdownGenerator) Match(filename string) bool {
-	return m.matcher.MatchString(filename)
+	return strings.HasSuffix(filename, ".md")
 }
 
 func (MarkdownGenerator) Generate(input io.Reader, static Staticer) (error, *meta) {
