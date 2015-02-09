@@ -2,11 +2,12 @@ package storage
 
 import (
 	"bytes"
-	"code.google.com/p/go.tools/present"
 	"html/template"
 	"io"
 	"io/ioutil"
 	"strings"
+
+	"golang.org/x/tools/present"
 )
 
 var (
