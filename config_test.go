@@ -3,6 +3,7 @@ package storage
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"testing"
 )
@@ -23,7 +24,7 @@ func TestConfig(t *testing.T) {
 			"./testdata/config.xml",
 			nil,
 			&Configs{
-				[]Config{
+				[]*Config{
 					{"git", "http://github.com/1/1", "tw", "123"},
 					{"local", localPath, "", ""},
 					{"local", filepath.Join(os.Getenv("GOPATH"), "/tmp/1/1"), "", ""},
@@ -43,35 +44,9 @@ func TestConfig(t *testing.T) {
 		if e := matchError(c.err, err); e != nil {
 			t.Fatal(e)
 		}
-		if checkConfigs(c.expect, cfg, t) {
+		if !reflect.DeepEqual(cfg, c.expect) {
 			t.Errorf("expect configs: %v\n, real configs %v\n",
 				*c.expect, *cfg)
 		}
 	}
-}
-
-func checkConfigs(expect, real *Configs, t *testing.T) (needShow bool) {
-	if expect != real {
-		if expect == nil {
-			t.Errorf("expect configs(<nil>),  but get %v\n", *real)
-			return false
-		}
-		if real == nil {
-			t.Errorf("expect configs(%v), but get <nil>\n", *expect)
-			return false
-		}
-		if len(expect.Content) != len(real.Content) {
-			t.Errorf("expect %d content, but get %d\n",
-				len(expect.Content), len(real.Content))
-			return true
-		}
-		for i, ec := range expect.Content {
-			if real.Content[i] != ec {
-				t.Errorf("expect %dth content(%v), but get(%v)\n",
-					i, ec, real.Content[i])
-				return true
-			}
-		}
-	}
-	return false
 }

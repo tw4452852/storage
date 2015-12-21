@@ -15,7 +15,7 @@ type Config struct { /*{{{*/
 } /*}}}*/
 
 type Configs struct { /*{{{*/
-	Content []Config `xml:"repo"`
+	Content []*Config `xml:"repo"`
 } /*}}}*/
 
 func getConfig(path string) (*Configs, error) { /*{{{*/
@@ -32,32 +32,23 @@ func getConfig(path string) (*Configs, error) { /*{{{*/
 		return nil, err
 	}
 
-	//filter the empty repo
-	//and join the $GOPATH to the rel local root path
-	clean := make([]int, 0)
-	for i, c := range cfg.Content {
+	cs := make([]*Config, 0, len(cfg.Content))
+	for _, c := range cfg.Content {
+		// filter the empty repo
 		if c.Type == "" || c.Root == "" {
-			clean = append(clean, i)
 			continue
 		}
+		// join the $GOPATH to the rel local root path
 		if c.Type == "local" {
 			c.Root = filepath.FromSlash(c.Root)
-			//TODO:windows isabs not begin with '/'
+			//TODO: windows isabs not begin with '/'
 			if !filepath.IsAbs(c.Root) {
-				cfg.Content[i].Root = filepath.Join(os.Getenv("GOPATH"), c.Root)
+				c.Root = filepath.Join(os.Getenv("GOPATH"), c.Root)
 			}
 		}
+		cs = append(cs, c)
 	}
-	if len(clean) > 0 {
-		cc := cfg.Content
-		for numDeleted, i := range clean {
-			index := i - numDeleted
-			if index < len(cc)-1 {
-				copy(cc[index:], cc[index+1:])
-			}
-			cc = cc[:len(cc)-1]
-		}
-		cfg.Content = cc
-	}
+
+	cfg.Content = cs
 	return cfg, nil
 } /*}}}*/
