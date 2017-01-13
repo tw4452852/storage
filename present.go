@@ -241,9 +241,7 @@ func (p presentGenerator) Generate(input io.Reader, s Staticer) (error, *meta) {
 func (presentGenerator) generate(input io.Reader, s Staticer, tmpl *template.Template) (error, *meta) {
 	ctx := &present.Context{func(filename string) ([]byte, error) {
 		r := s.Static(filename)
-		if closer, ok := r.(io.Closer); ok {
-			defer closer.Close()
-		}
+		defer r.Close()
 		return ioutil.ReadAll(r)
 	}}
 	doc, err := ctx.Parse(input, "", 0)

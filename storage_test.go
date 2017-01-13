@@ -32,7 +32,7 @@ func (e *entry) Content() template.HTML {
 func (e *entry) Title() template.HTML {
 	return template.HTML("hello test title")
 }
-func (e *entry) Static(string) io.Reader {
+func (e *entry) Static(string) io.ReadCloser {
 	return nil
 }
 func (e *entry) Update() error {

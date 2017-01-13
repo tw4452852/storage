@@ -22,7 +22,7 @@ type Keyer interface {
 }
 
 type Staticer interface {
-	Static(string) io.Reader
+	Static(string) io.ReadCloser
 }
 
 //Poster represet a post

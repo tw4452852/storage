@@ -6,6 +6,7 @@ import (
 	"fmt"
 	ghc "github.com/alcacoop/go-github-client/client"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"path"
@@ -325,7 +326,7 @@ func (gp *githubPost) Update() error {
 	return nil
 }
 
-func (gp *githubPost) Static(p string) io.Reader {
+func (gp *githubPost) Static(p string) io.ReadCloser {
 	p = path.Join(path.Dir(gp.path), p)
-	return gp.repo.static(p)
+	return ioutil.NopCloser(gp.repo.static(p))
 }

@@ -36,7 +36,7 @@ func (m MarkdownGenerator) Match(filename string) bool {
 	return strings.HasSuffix(filename, ".md")
 }
 
-func (MarkdownGenerator) Generate(input io.Reader, static Staticer) (error, *meta) {
+func (MarkdownGenerator) Generate(input io.Reader, _ Staticer) (error, *meta) {
 	c, e := ioutil.ReadAll(input)
 	if e != nil {
 		return e, nil

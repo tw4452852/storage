@@ -152,7 +152,7 @@ func (lp *localPost) Update() error {
 }
 
 //Implement localPost's Static interface
-func (lp *localPost) Static(path string) io.Reader {
+func (lp *localPost) Static(path string) io.ReadCloser {
 	path = filepath.FromSlash(path)
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(filepath.Dir(lp.path), path)
