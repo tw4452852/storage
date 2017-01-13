@@ -15,9 +15,9 @@ type request struct {
 	err    chan error
 }
 
-//Add add something into the dataCenter
-//If the things are exist, update it
-//Some internal error will be returned
+// Add add something into the dataCenter
+// If the things are exist, update it
+// Some internal error will be returned
 func Add(args ...Poster) error {
 	r := &request{
 		cmd:  ADD,
@@ -31,9 +31,9 @@ func Add(args ...Poster) error {
 	return <-r.err
 }
 
-//Remove remove something from the dataCenter
-//If the things are not exist, do nothing
-//Some internal error will be returned
+// Remove remove something from the dataCenter
+// If the things are not exist, do nothing
+// Some internal error will be returned
 func Remove(args ...Keyer) error {
 	r := &request{
 		cmd:  REMOVE,
@@ -47,12 +47,12 @@ func Remove(args ...Keyer) error {
 	return <-r.err
 }
 
-//Response for the request
+// Response for the request
 type Result struct {
 	Content []Poster
 }
 
-//Satisfy sort.Interface
+// Satisfy sort.Interface
 func (r *Result) Len() int {
 	return len(r.Content)
 }
@@ -65,10 +65,10 @@ func (r *Result) Swap(i, j int) {
 	r.Content[i], r.Content[j] = r.Content[j], r.Content[i]
 }
 
-//Get may get something from the dataCenter
-//If you want get sth special, give the filter arg
-//Otherwise, get all
-//Some internal error will be returned
+// Get may get something from the dataCenter
+// If you want get sth special, give the filter arg
+// Otherwise, get all
+// Some internal error will be returned
 func Get(args ...Keyer) (*Result, error) {
 	r := &request{
 		cmd:    GET,

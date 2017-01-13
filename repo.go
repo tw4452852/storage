@@ -8,28 +8,28 @@ import (
 	"time"
 )
 
-//Repository represent a repostory
+// Repository represent a repostory
 type Repository interface {
-	//used for setup a repository
+	// used for setup a repository
 	Setup(user, password string) error
-	//used for updating a repository
+	// used for updating a repository
 	Refresh()
-	//used for uninstall a repostory
+	// used for uninstall a repostory
 	Uninstall()
 }
 
-//used for Init a repository with a root path
+// used for Init a repository with a root path
 type InitFunction func(root string) Repository
 
 var supportedRepoTypes = make(map[string]InitFunction)
 
-//RegisterRepoType register a support repository type
-//If there is one, just update it
+// RegisterRepoType register a support repository type
+// If there is one, just update it
 func RegisterRepoType(key string, f InitFunction) {
 	supportedRepoTypes[key] = f
 }
 
-//UnregisterRepoType unregister a support repository type
+// UnregisterRepoType unregister a support repository type
 func UnregisterRepoType(key string) {
 	delete(supportedRepoTypes, key)
 }
@@ -56,7 +56,7 @@ func (rs repos) refresh(cfg *Configs) {
 				}
 				log.Printf("add a repo(%q)\n", key)
 				rs[key] = repo
-				//refresh when init a repo
+				// refresh when init a repo
 				repo.Refresh()
 			} else {
 				log.Printf("add repo: type(%s) isn't supported yet\n",
@@ -68,7 +68,7 @@ func (rs repos) refresh(cfg *Configs) {
 		refreshed[key] = true
 	}
 
-	//uninstall the repos that have been remove
+	// uninstall the repos that have been remove
 	for key, exist := range refreshed {
 		if !exist {
 			rs[key].Uninstall()
@@ -85,7 +85,7 @@ func initRepos(configPath string) {
 }
 
 func checkConfig(r repos, configPath string) {
-	//refresh every 10s
+	// refresh every 10s
 	timer := time.NewTicker(10 * time.Second)
 	cpath := configPath
 	if !filepath.IsAbs(cpath) {
@@ -94,8 +94,8 @@ func checkConfig(r repos, configPath string) {
 	for range timer.C {
 		cfg, err := getConfig(cpath)
 		if err != nil {
-			//if there is some error(e.g. file doesn't exist) while reading
-			//config file, just skip this refresh
+			// if there is some error(e.g. file doesn't exist) while reading
+			// config file, just skip this refresh
 			continue
 		}
 		r.refresh(cfg)
@@ -105,7 +105,7 @@ func checkConfig(r repos, configPath string) {
 
 type StaticErr string
 
-//implement io.Reader
+// implement io.Reader
 func (sr StaticErr) Read(p []byte) (int, error) {
 	log.Println(sr)
 	return 0, errors.New(string(sr))

@@ -41,7 +41,7 @@ func getConfig(path string) (*Configs, error) {
 		// join the $GOPATH to the rel local root path
 		if c.Type == "local" {
 			c.Root = filepath.FromSlash(c.Root)
-			//TODO: windows isabs not begin with '/'
+			// TODO: windows isabs not begin with '/'
 			if !filepath.IsAbs(c.Root) {
 				c.Root = filepath.Join(os.Getenv("GOPATH"), c.Root)
 			}

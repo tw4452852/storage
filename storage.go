@@ -39,7 +39,7 @@ func (d *storage) serve() {
 func (d *storage) handleRequest(req *request) {
 	loopArgs := func(action func(key string, arg interface{}) error) error {
 		for _, arg := range req.args {
-			//Only accept the things implement keyer
+			// Only accept the things implement keyer
 			if keyer, ok := arg.(Keyer); ok {
 				key := keyer.Key()
 				if err := action(key, arg); err != nil {
@@ -55,7 +55,7 @@ func (d *storage) handleRequest(req *request) {
 	switch req.cmd {
 	case ADD:
 		req.err <- loopArgs(func(key string, arg interface{}) error {
-			//add or update it, here only myself refer the map
+			// add or update it, here only myself refer the map
 			if poster, ok := arg.(Poster); ok {
 				d.data[key] = arg.(Poster)
 				if debug {
@@ -86,17 +86,17 @@ func (d *storage) handleRequest(req *request) {
 				return nil
 			}
 
-			//not found
+			// not found
 			return errors.New("can't find want you want")
 		})
 
-		//some internal error
+		// some internal error
 		if err != nil {
 			req.err <- err
 			return
 		}
 
-		//get all
+		// get all
 		if len(content) == 0 {
 			for _, v := range d.data {
 				content = append(content, v)

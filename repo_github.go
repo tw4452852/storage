@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	ghc "github.com/alcacoop/go-github-client/client"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	ghc "github.com/alcacoop/go-github-client/client"
 )
 
 func init() {
@@ -29,17 +30,17 @@ type githubRepo struct {
 	posts  map[string]*githubPost
 }
 
-//A wrapper of *ghc.GithubClient
-//Used to avoid the exceed the limit
+// A wrapper of *ghc.GithubClient
+// Used to avoid the exceed the limit
 type githubClient struct {
 	lock  sync.RWMutex
 	cache map[string]*githubResource
 	*ghc.GithubClient
 }
 
-//githubResource represet a github content
-//according to the url, etag used for a
-//conditional request
+// githubResource represet a github content
+// according to the url, etag used for a
+// conditional request
 type githubResource struct {
 	ghc.JsonMap
 	etag string
@@ -54,7 +55,7 @@ func newGithubClient(client *ghc.GithubClient) *githubClient {
 	return gc
 }
 
-//refresh periodically the cache
+// refresh periodically the cache
 func (gc *githubClient) refresh() {
 	timer := time.NewTicker(1 * time.Minute)
 	for range timer.C {
@@ -66,7 +67,7 @@ func (gc *githubClient) refresh() {
 				continue
 			}
 			if err == nil && gr == nil {
-				//nothing to be updated
+				// nothing to be updated
 				continue
 			}
 			gc.lock.Lock()
@@ -76,10 +77,10 @@ func (gc *githubClient) refresh() {
 	}
 }
 
-//get the appointed resource according to the url
-//If there is a cache, just return it, otherwise,
-//emit a api request and update the cache
-//if it is a conditional request, return nil, nil when succeed
+// get the appointed resource according to the url
+// If there is a cache, just return it, otherwise,
+// emit a api request and update the cache
+// if it is a conditional request, return nil, nil when succeed
 func (gc *githubClient) get(url string) (ghc.JsonMap, error) {
 	gc.lock.RLock()
 	gr, found := gc.cache[url]
@@ -87,14 +88,14 @@ func (gc *githubClient) get(url string) (ghc.JsonMap, error) {
 		gc.lock.RUnlock()
 		return gr.JsonMap, nil
 	}
-	//if not found, release the Rlock first,
-	//prepare to emit a api request
+	// if not found, release the Rlock first,
+	// prepare to emit a api request
 	gc.lock.RUnlock()
 	gr, err := execApi(gc, url, false)
 	if err != nil {
 		return nil, err
 	}
-	//save result into cache
+	// save result into cache
 	gc.lock.Lock()
 	defer gc.lock.Unlock()
 	gc.cache[url] = gr
@@ -119,7 +120,7 @@ func execApi(client *githubClient, url string, isCondition bool) (*githubResourc
 		return nil, err
 	}
 
-	//check if nothing is modified
+	// check if nothing is modified
 	if isCondition &&
 		res.RawHttpResponse.Status == "304 Not Modified" {
 		return nil, nil
@@ -146,9 +147,9 @@ func NewGithubRepo(name string) Repository {
 	}
 }
 
-//Implement the Repository interface
+// Implement the Repository interface
 func (gr *githubRepo) Setup(user, password string) error {
-	//TODO:	oauth2
+	// TODO:	oauth2
 	client, err := ghc.NewGithubClient(user, password,
 		ghc.AUTH_USER_PASSWORD)
 	if err != nil {
@@ -160,7 +161,7 @@ func (gr *githubRepo) Setup(user, password string) error {
 }
 
 func (gr *githubRepo) Uninstall() {
-	//delete repo's post in the dataCenter
+	// delete repo's post in the dataCenter
 	cleans := make([]Keyer, 0, len(gr.posts))
 	for _, p := range gr.posts {
 		cleans = append(cleans, p)
@@ -172,10 +173,10 @@ func (gr *githubRepo) Uninstall() {
 }
 
 func (gr *githubRepo) Refresh() {
-	//get the master branch post list
-	//1.get master branch tree sha
-	//2.filter tree to get support file
-	//if there is some error happened, just abort and do nothing
+	// get the master branch post list
+	// 1.get master branch tree sha
+	// 2.filter tree to get support file
+	// if there is some error happened, just abort and do nothing
 	master, err := gr.client.get(
 		"repos/" + gr.user + "/" + gr.name + "/branches/master")
 	if err != nil {
@@ -222,13 +223,13 @@ func (gr *githubRepo) Refresh() {
 		paths = append(paths, path)
 	}
 	sort.Strings(paths)
-	//delete the no exist posts
+	// delete the no exist posts
 	gr.clean(paths)
-	//add new post and update the exist ones
+	// add new post and update the exist ones
 	gr.update(paths)
 }
 
-//the paths has been sorted in increasing order
+// the paths has been sorted in increasing order
 func (gr *githubRepo) clean(paths []string) {
 	cleans := make([]Keyer, 0)
 	for relPath, p := range gr.posts {
@@ -245,7 +246,7 @@ func (gr *githubRepo) clean(paths []string) {
 	}
 }
 
-//the paths has been sorted in increasing order
+// the paths has been sorted in increasing order
 func (gr *githubRepo) update(paths []string) {
 	for _, path := range paths {
 		post, found := gr.posts[path]
@@ -260,7 +261,7 @@ func (gr *githubRepo) update(paths []string) {
 			}
 			continue
 		}
-		//update a exist one
+		// update a exist one
 		if e := post.Update(); e != nil {
 			log.Printf("Update a github post(%s) failed: %s\n", path, e)
 		}
@@ -303,7 +304,7 @@ func (gp *githubPost) Update() error {
 	}
 	sha, encodedContent := ms.GetString("sha"), ms.GetString("content")
 	if sha == gp.sha {
-		//no need to update
+		// no need to update
 		return nil
 	}
 	encodedContent = strings.Replace(encodedContent, "\n", "", -1)
@@ -317,11 +318,11 @@ func (gp *githubPost) Update() error {
 	if debug {
 		log.Printf("update a github post(%s)\n", gp.path)
 	}
-	//add it to the dataCenter
+	// add it to the dataCenter
 	if err = Add(gp); err != nil {
 		return err
 	}
-	//update it sha
+	// update it sha
 	gp.sha = sha
 	return nil
 }

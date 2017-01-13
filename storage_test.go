@@ -19,7 +19,7 @@ type entry struct {
 	data string
 }
 
-//implement Poster interface
+// implement Poster interface
 func (e *entry) Key() string {
 	return e.data
 }
@@ -74,7 +74,7 @@ var (
 
 func TestAdd(t *testing.T) {
 	cases := []testCase{
-		//add
+		// add
 		{
 			nil,
 			[]interface{}{ents[0]},
@@ -125,7 +125,7 @@ func TestAdd(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	cases := []testCase{
-		//update
+		// update
 		{
 			nil,
 			[]interface{}{ents[0], ents[1]},
@@ -162,7 +162,7 @@ func TestUpdate(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	cases := []testCase{
-		//remove
+		// remove
 		{
 			func() error {
 				if err := Add(ents[0], ents[1], ents[2]); err != nil {
@@ -218,7 +218,7 @@ func TestRemove(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	cases := []testCase{
-		//get
+		// get
 		{
 			func() error {
 				if err := Add(ents[0], ents[1], ents[2]); err != nil {

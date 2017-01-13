@@ -26,9 +26,9 @@ func NewLocalRepo(root string) Repository {
 	}
 }
 
-//implement the Repository interface
+// implement the Repository interface
 func (lr *localRepo) Setup(user, password string) error {
-	//root Must be a dir
+	// root Must be a dir
 	fi, err := os.Stat(lr.root)
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func (lr *localRepo) Setup(user, password string) error {
 }
 
 func (lr *localRepo) Uninstall() {
-	//delete repo's post in the dataCenter
+	// delete repo's post in the dataCenter
 	cleans := make([]Keyer, 0, len(lr.posts))
 	for _, p := range lr.posts {
 		cleans = append(cleans, p)
@@ -52,13 +52,13 @@ func (lr *localRepo) Uninstall() {
 }
 
 func (lr *localRepo) Refresh() {
-	//delete the removed files
+	// delete the removed files
 	lr.clean()
-	//add newer post and update the exist post
+	// add newer post and update the exist post
 	lr.update()
 }
 
-//clean the noexist posts
+// clean the noexist posts
 func (lr *localRepo) clean() {
 	cleans := make([]Keyer, 0)
 	for relPath, p := range lr.posts {
@@ -76,10 +76,10 @@ func (lr *localRepo) clean() {
 	}
 }
 
-//update add new post or update the exist ones
+// update add new post or update the exist ones
 func (lr *localRepo) update() {
 	if err := filepath.Walk(lr.root, func(path string, info os.FileInfo, err error) error {
-		//only watch the special filetype
+		// only watch the special filetype
 		if info.IsDir() {
 			return nil
 		}
@@ -99,7 +99,7 @@ func (lr *localRepo) update() {
 			}
 			return nil
 		}
-		//update a exist one
+		// update a exist one
 		if e := post.Update(); e != nil {
 			log.Printf("Update a local post(%s) failed: %s\n", path, e)
 		}
@@ -110,7 +110,7 @@ func (lr *localRepo) update() {
 	}
 }
 
-//represet a local post
+// represet a local post
 type localPost struct {
 	path       string
 	lastUpdate time.Time
@@ -143,7 +143,7 @@ func (lp *localPost) Update() error {
 		}
 		lp.update(m)
 		lp.lastUpdate = ut
-		//update the content in dataCenter
+		// update the content in dataCenter
 		if err := Add(lp); err != nil {
 			log.Printf("update a local post failed: %s\n", err)
 		}
@@ -151,7 +151,7 @@ func (lp *localPost) Update() error {
 	return nil
 }
 
-//Implement localPost's Static interface
+// Implement localPost's Static interface
 func (lp *localPost) Static(path string) io.ReadCloser {
 	path = filepath.FromSlash(path)
 	if !filepath.IsAbs(path) {

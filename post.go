@@ -17,7 +17,7 @@ type meta struct {
 	isSlide bool
 }
 
-//post represent a poster instance
+// post represent a poster instance
 type post struct {
 	sync.RWMutex
 	meta
@@ -27,7 +27,7 @@ func newPost() *post {
 	return new(post)
 }
 
-//implement Poster's common part
+// implement Poster's common part
 func (p *post) Date() time.Time {
 	p.RLock()
 	defer p.RUnlock()
@@ -65,7 +65,7 @@ func (p *post) IsSlide() bool {
 }
 
 func (p *post) update(m *meta) {
-	//update meta
+	// update meta
 	p.Lock()
 	p.meta = *m
 	p.Unlock()
@@ -84,7 +84,7 @@ func generateImageLink(key, link string) string {
 	return link
 }
 
-//wantChange check whether the image's link need to add prefix
+// wantChange check whether the image's link need to add prefix
 func needChangeImageLink(link string) bool {
 	if strings.HasPrefix(link, "http://") ||
 		strings.HasPrefix(link, "https://") {

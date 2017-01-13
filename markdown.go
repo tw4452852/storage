@@ -41,7 +41,7 @@ func (MarkdownGenerator) Generate(input io.Reader, _ Staticer) (error, *meta) {
 	if e != nil {
 		return e, nil
 	}
-	//title
+	// title
 	firstLineIndex := strings.Index(string(c), "\n")
 	if firstLineIndex == -1 {
 		return errors.New("generateAll: there must be at least one line\n"), nil
@@ -52,14 +52,14 @@ func (MarkdownGenerator) Generate(input io.Reader, _ Staticer) (error, *meta) {
 		return errors.New("generateAll: can't find title, date and tags\n"), nil
 	}
 	title := strings.TrimSpace(titleDateTags[0])
-	//date
+	// date
 	t, e := time.Parse(TimePattern, strings.TrimSpace(titleDateTags[1]))
 	if e != nil {
 		return e, nil
 	}
-	//key
+	// key
 	key := title2Key(title)
-	//tags
+	// tags
 	tags := []string{}
 	tagsString := strings.TrimSpace(titleDateTags[2])
 	if tagsString != "" {
@@ -68,7 +68,7 @@ func (MarkdownGenerator) Generate(input io.Reader, _ Staticer) (error, *meta) {
 			tags[i] = strings.TrimSpace(tag)
 		}
 	}
-	//content
+	// content
 	remain := strings.TrimSpace(string(c[firstLineIndex+1:]))
 	content := template.HTML(markdown([]byte(remain), key))
 
@@ -93,7 +93,7 @@ func (mr *myRender) BlockCode(out *bytes.Buffer, text []byte, lang string) {
 	out.WriteString(`</div>`)
 }
 
-//add prefix to img link
+// add prefix to img link
 func (mr *myRender) Image(out *bytes.Buffer, link, title, alt []byte) {
 	mr.Renderer.Image(out, []byte(generateImageLink(mr.key, string(link))), title, alt)
 }
