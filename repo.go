@@ -9,14 +9,14 @@ import (
 )
 
 //Repository represent a repostory
-type Repository interface { /*{{{*/
+type Repository interface {
 	//used for setup a repository
 	Setup(user, password string) error
 	//used for updating a repository
 	Refresh()
 	//used for uninstall a repostory
 	Uninstall()
-} /*}}}*/
+}
 
 //used for Init a repository with a root path
 type InitFunction func(root string) Repository
@@ -25,18 +25,18 @@ var supportedRepoTypes = make(map[string]InitFunction)
 
 //RegisterRepoType register a support repository type
 //If there is one, just update it
-func RegisterRepoType(key string, f InitFunction) { /*{{{*/
+func RegisterRepoType(key string, f InitFunction) {
 	supportedRepoTypes[key] = f
-} /*}}}*/
+}
 
 //UnregisterRepoType unregister a support repository type
-func UnregisterRepoType(key string) { /*{{{*/
+func UnregisterRepoType(key string) {
 	delete(supportedRepoTypes, key)
-} /*}}}*/
+}
 
 type repos map[string]Repository
 
-func (rs repos) refresh(cfg *Configs) { /*{{{*/
+func (rs repos) refresh(cfg *Configs) {
 	refreshed := make(map[string]bool)
 	for key := range rs {
 		refreshed[key] = false
@@ -75,23 +75,23 @@ func (rs repos) refresh(cfg *Configs) { /*{{{*/
 			delete(rs, key)
 		}
 	}
-} /*}}}*/
+}
 
 var repositories repos
 
-func initRepos(configPath string) { /*{{{*/
+func initRepos(configPath string) {
 	repositories = make(repos)
 	go checkConfig(repositories, configPath)
-} /*}}}*/
+}
 
-func checkConfig(r repos, configPath string) { /*{{{*/
+func checkConfig(r repos, configPath string) {
 	//refresh every 10s
 	timer := time.NewTicker(10 * time.Second)
 	cpath := configPath
 	if !filepath.IsAbs(cpath) {
 		cpath = filepath.Join(os.Getenv("GOPATH"), cpath)
 	}
-	for _ = range timer.C {
+	for range timer.C {
 		cfg, err := getConfig(cpath)
 		if err != nil {
 			//if there is some error(e.g. file doesn't exist) while reading
@@ -101,12 +101,12 @@ func checkConfig(r repos, configPath string) { /*{{{*/
 		r.refresh(cfg)
 	}
 	panic("not reach")
-} /*}}}*/
+}
 
 type StaticErr string
 
 //implement io.Reader
-func (sr StaticErr) Read(p []byte) (int, error) { /*{{{*/
+func (sr StaticErr) Read(p []byte) (int, error) {
 	log.Println(sr)
 	return 0, errors.New(string(sr))
-} /*}}}*/
+}

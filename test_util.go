@@ -20,7 +20,7 @@ func init() {
 	}
 }
 
-func matchError(expect, real error) error { /*{{{*/
+func matchError(expect, real error) error {
 	if expect != real {
 		if expect == nil {
 			return fmt.Errorf("expect err(nil), but get err(%s)\n", real.Error())
@@ -35,4 +35,4 @@ func matchError(expect, real error) error { /*{{{*/
 			expect.Error(), real.Error())
 	}
 	return nil
-} /*}}}*/
+}

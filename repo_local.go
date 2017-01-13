@@ -10,24 +10,24 @@ import (
 	"time"
 )
 
-func init() { /*{{{*/
+func init() {
 	RegisterRepoType("local", NewLocalRepo)
-} /*}}}*/
+}
 
-type localRepo struct { /*{{{*/
+type localRepo struct {
 	root  string
 	posts map[string]*localPost
-} /*}}}*/
+}
 
-func NewLocalRepo(root string) Repository { /*{{{*/
+func NewLocalRepo(root string) Repository {
 	return &localRepo{
 		root:  root,
 		posts: make(map[string]*localPost),
 	}
-} /*}}}*/
+}
 
 //implement the Repository interface
-func (lr *localRepo) Setup(user, password string) error { /*{{{*/
+func (lr *localRepo) Setup(user, password string) error {
 	//root Must be a dir
 	fi, err := os.Stat(lr.root)
 	if err != nil {
@@ -37,9 +37,9 @@ func (lr *localRepo) Setup(user, password string) error { /*{{{*/
 		return errors.New("you can't specify a file as a repo root")
 	}
 	return nil
-} /*}}}*/
+}
 
-func (lr *localRepo) Uninstall() { /*{{{*/
+func (lr *localRepo) Uninstall() {
 	//delete repo's post in the dataCenter
 	cleans := make([]Keyer, 0, len(lr.posts))
 	for _, p := range lr.posts {
@@ -49,17 +49,17 @@ func (lr *localRepo) Uninstall() { /*{{{*/
 		log.Printf("remove all the posts in local repo(%s) failed: %s\n",
 			lr.root, err)
 	}
-} /*}}}*/
+}
 
-func (lr *localRepo) Refresh() { /*{{{*/
+func (lr *localRepo) Refresh() {
 	//delete the removed files
 	lr.clean()
 	//add newer post and update the exist post
 	lr.update()
-} /*}}}*/
+}
 
 //clean the noexist posts
-func (lr *localRepo) clean() { /*{{{*/
+func (lr *localRepo) clean() {
 	cleans := make([]Keyer, 0)
 	for relPath, p := range lr.posts {
 		absPath := filepath.Join(lr.root, relPath)
@@ -74,10 +74,10 @@ func (lr *localRepo) clean() { /*{{{*/
 			log.Printf("remove local post failed: %s\n", err)
 		}
 	}
-} /*}}}*/
+}
 
 //update add new post or update the exist ones
-func (lr *localRepo) update() { /*{{{*/
+func (lr *localRepo) update() {
 	if err := filepath.Walk(lr.root, func(path string, info os.FileInfo, err error) error {
 		//only watch the special filetype
 		if info.IsDir() {
@@ -108,25 +108,25 @@ func (lr *localRepo) update() { /*{{{*/
 		log.Printf("Walk local repo(%s) error: %s\n",
 			lr.root, err)
 	}
-} /*}}}*/
+}
 
 //represet a local post
-type localPost struct { /*{{{*/
+type localPost struct {
 	path       string
 	lastUpdate time.Time
 	*post
 	Generator
-} /*}}}*/
+}
 
-func newLocalPost(path string) *localPost { /*{{{*/
+func newLocalPost(path string) *localPost {
 	return &localPost{
 		path:      path,
 		post:      newPost(),
 		Generator: FindGenerator(path),
 	}
-} /*}}}*/
+}
 
-func (lp *localPost) Update() error { /*{{{*/
+func (lp *localPost) Update() error {
 	file, err := os.Open(lp.path)
 	if err != nil {
 		return err
@@ -149,10 +149,10 @@ func (lp *localPost) Update() error { /*{{{*/
 		}
 	}
 	return nil
-} /*}}}*/
+}
 
 //Implement localPost's Static interface
-func (lp *localPost) Static(path string) io.Reader { /*{{{*/
+func (lp *localPost) Static(path string) io.Reader {
 	path = filepath.FromSlash(path)
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(filepath.Dir(lp.path), path)
@@ -163,4 +163,4 @@ func (lp *localPost) Static(path string) io.Reader { /*{{{*/
 			path, err))
 	}
 	return file
-} /*}}}*/
+}

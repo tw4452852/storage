@@ -7,18 +7,18 @@ import (
 	"path/filepath"
 )
 
-type Config struct { /*{{{*/
+type Config struct {
 	Type     string `xml:"type"`
 	Root     string `xml:"root"`
 	User     string `xml:"username"`
 	Password string `xml:"password"`
-} /*}}}*/
+}
 
-type Configs struct { /*{{{*/
+type Configs struct {
 	Content []*Config `xml:"repo"`
-} /*}}}*/
+}
 
-func getConfig(path string) (*Configs, error) { /*{{{*/
+func getConfig(path string) (*Configs, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		log.Printf("open config file error: %s\n", err)
@@ -51,4 +51,4 @@ func getConfig(path string) (*Configs, error) { /*{{{*/
 
 	cfg.Content = cs
 	return cfg, nil
-} /*}}}*/
+}

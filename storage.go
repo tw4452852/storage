@@ -5,11 +5,11 @@ import (
 	"log"
 )
 
-type storage struct { /*{{{*/
+type storage struct {
 	requestCh chan *request     //for outcoming request
 	closeCh   chan bool         //for exit
 	data      map[string]Poster //internal data storage
-} /*}}}*/
+}
 
 var (
 	dataCenter *storage
@@ -25,7 +25,7 @@ func initStorage() {
 	go dataCenter.serve()
 }
 
-func (d *storage) serve() { /*{{{*/
+func (d *storage) serve() {
 	for {
 		select {
 		case req := <-d.requestCh:
@@ -34,9 +34,9 @@ func (d *storage) serve() { /*{{{*/
 			return
 		}
 	}
-} /*}}}*/
+}
 
-func (d *storage) handleRequest(req *request) { /*{{{*/
+func (d *storage) handleRequest(req *request) {
 	loopArgs := func(action func(key string, arg interface{}) error) error {
 		for _, arg := range req.args {
 			//Only accept the things implement keyer
@@ -106,15 +106,15 @@ func (d *storage) handleRequest(req *request) { /*{{{*/
 		req.result <- content
 		req.err <- nil
 	}
-} /*}}}*/
+}
 
-func (d *storage) reset() { /*{{{*/
+func (d *storage) reset() {
 	d.data = make(map[string]Poster)
-} /*}}}*/
+}
 
-func (d *storage) find(key string) interface{} { /*{{{*/
+func (d *storage) find(key string) interface{} {
 	if v, found := d.data[key]; found {
 		return v
 	}
 	return nil
-} /*}}}*/
+}

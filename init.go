@@ -7,26 +7,26 @@ import (
 )
 
 //Init init the dataCenter and repositories
-func Init(configPath string) { /*{{{*/
+func Init(configPath string) {
 	initStorage()
 	initRepos(configPath)
-} /*}}}*/
+}
 
-const ( /*{{{*/
+const (
 	TimePattern = "2006-01-02"
-) /*}}}*/
+)
 
 //Keyer represent a key to post
-type Keyer interface { /*{{{*/
+type Keyer interface {
 	Key() string
-} /*}}}*/
+}
 
 type Staticer interface {
 	Static(string) io.Reader
 }
 
 //Poster represet a post
-type Poster interface { /*{{{*/
+type Poster interface {
 	Date() time.Time
 	Content() template.HTML
 	Title() template.HTML
@@ -35,4 +35,4 @@ type Poster interface { /*{{{*/
 	Update() error
 	Tags() []string
 	IsSlide() bool
-} /*}}}*/
+}

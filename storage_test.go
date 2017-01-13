@@ -61,18 +61,18 @@ var (
 	noFound    = errors.New("can't find want you want")
 
 	ents = []*entry{
-		&entry{"1"},
-		&entry{"1"},
-		&entry{"2"},
+		{"1"},
+		{"1"},
+		{"2"},
 	}
 	inents = []*invalidEntry{
-		&invalidEntry{"1"},
-		&invalidEntry{"1"},
-		&invalidEntry{"2"},
+		{"1"},
+		{"1"},
+		{"2"},
 	}
 )
 
-func TestAdd(t *testing.T) { /*{{{*/
+func TestAdd(t *testing.T) {
 	cases := []testCase{
 		//add
 		{
@@ -121,9 +121,9 @@ func TestAdd(t *testing.T) { /*{{{*/
 			}
 		}
 	}
-} /*}}}*/
+}
 
-func TestUpdate(t *testing.T) { /*{{{*/
+func TestUpdate(t *testing.T) {
 	cases := []testCase{
 		//update
 		{
@@ -158,9 +158,9 @@ func TestUpdate(t *testing.T) { /*{{{*/
 			}
 		}
 	}
-} /*}}}*/
+}
 
-func TestRemove(t *testing.T) { /*{{{*/
+func TestRemove(t *testing.T) {
 	cases := []testCase{
 		//remove
 		{
@@ -214,9 +214,9 @@ func TestRemove(t *testing.T) { /*{{{*/
 			}
 		}
 	}
-} /*}}}*/
+}
 
-func TestGet(t *testing.T) { /*{{{*/
+func TestGet(t *testing.T) {
 	cases := []testCase{
 		//get
 		{
@@ -320,9 +320,9 @@ func TestGet(t *testing.T) { /*{{{*/
 			}
 		}
 	}
-} /*}}}*/
+}
 
-func compareTwo(expects []*entry, reals []Poster) error { /*{{{*/
+func compareTwo(expects []*entry, reals []Poster) error {
 check:
 	for _, expect := range expects {
 		for _, real := range reals {
@@ -334,7 +334,7 @@ check:
 			expect)
 	}
 	return nil
-} /*}}}*/
+}
 
 func BenchmarkAddUpdate(b *testing.B) {
 	b.StopTimer()

@@ -11,7 +11,7 @@ import (
 var repoRoot = filepath.FromSlash(filepath.Join(os.Getenv("GOPATH"),
 	"src/github.com/tw4452852/storage/testdata/localRepo/"))
 
-func TestLocalSetup(t *testing.T) { /*{{{*/
+func TestLocalSetup(t *testing.T) {
 	cases := []struct {
 		root   string
 		expect error
@@ -41,9 +41,9 @@ func TestLocalSetup(t *testing.T) { /*{{{*/
 				c.root, r.root)
 		}
 	}
-} /*}}}*/
+}
 
-func TestLocalRepo(t *testing.T) { /*{{{*/
+func TestLocalRepo(t *testing.T) {
 	repo := NewLocalRepo(repoRoot)
 	if err := repo.Setup("", ""); err != nil {
 		t.Fatal(err)
@@ -99,9 +99,9 @@ func TestLocalRepo(t *testing.T) { /*{{{*/
 			c.check()
 		}
 	}
-} /*}}}*/
+}
 
-func checkLocalPosts(expect, real map[string]*localPost) error { /*{{{*/
+func checkLocalPosts(expect, real map[string]*localPost) error {
 	if len(real) != len(expect) {
 		return fmt.Errorf("length of posts isn't equal: expect %v but get %v\n",
 			expect, real)
@@ -116,4 +116,4 @@ func checkLocalPosts(expect, real map[string]*localPost) error { /*{{{*/
 		}
 	}
 	return nil
-} /*}}}*/
+}

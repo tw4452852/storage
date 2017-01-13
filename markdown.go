@@ -98,11 +98,11 @@ func (mr *myRender) Image(out *bytes.Buffer, link, title, alt []byte) {
 	mr.Renderer.Image(out, []byte(generateImageLink(mr.key, string(link))), title, alt)
 }
 
-func markdown(input []byte, key string) []byte { /*{{{*/
+func markdown(input []byte, key string) []byte {
 	// set up the HTML renderer
 	renderer := &myRender{
 		key:      key,
 		Renderer: blackfriday.HtmlRenderer(htmlFlags, "", ""),
 	}
 	return blackfriday.Markdown(input, renderer, extensions)
-} /*}}}*/
+}

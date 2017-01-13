@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestMarkDownGenerate(t *testing.T) { /*{{{*/
+func TestMarkDownGenerate(t *testing.T) {
 	type Expect struct {
 		path, title, date, content string
 		tags                       []string
@@ -150,9 +150,9 @@ func TestMarkDownGenerate(t *testing.T) { /*{{{*/
 			t.Errorf("case %d error: %s\n", i, err)
 		}
 	}
-} /*}}}*/
+}
 
-func TestMarkDownImage(t *testing.T) { /*{{{*/
+func TestMarkDownImage(t *testing.T) {
 	type Expect struct {
 		path string
 	}
@@ -220,4 +220,4 @@ func TestMarkDownImage(t *testing.T) { /*{{{*/
 			t.Errorf("case %d error: %s\n", i, err)
 		}
 	}
-} /*}}}*/
+}

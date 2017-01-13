@@ -8,17 +8,17 @@ const (
 	GET
 )
 
-type request struct { /*{{{*/
+type request struct {
 	cmd    cmd
 	args   []interface{}
 	result chan []Poster
 	err    chan error
-} /*}}}*/
+}
 
 //Add add something into the dataCenter
 //If the things are exist, update it
 //Some internal error will be returned
-func Add(args ...Poster) error { /*{{{*/
+func Add(args ...Poster) error {
 	r := &request{
 		cmd:  ADD,
 		args: make([]interface{}, len(args)),
@@ -29,12 +29,12 @@ func Add(args ...Poster) error { /*{{{*/
 	}
 	dataCenter.requestCh <- r
 	return <-r.err
-} /*}}}*/
+}
 
 //Remove remove something from the dataCenter
 //If the things are not exist, do nothing
 //Some internal error will be returned
-func Remove(args ...Keyer) error { /*{{{*/
+func Remove(args ...Keyer) error {
 	r := &request{
 		cmd:  REMOVE,
 		args: make([]interface{}, len(args)),
@@ -45,31 +45,31 @@ func Remove(args ...Keyer) error { /*{{{*/
 	}
 	dataCenter.requestCh <- r
 	return <-r.err
-} /*}}}*/
+}
 
 //Response for the request
-type Result struct { /*{{{*/
+type Result struct {
 	Content []Poster
-} /*}}}*/
+}
 
 //Satisfy sort.Interface
-func (r *Result) Len() int { /*{{{*/
+func (r *Result) Len() int {
 	return len(r.Content)
-} /*}}}*/
+}
 
-func (r *Result) Less(i, j int) bool { /*{{{*/
+func (r *Result) Less(i, j int) bool {
 	return r.Content[i].Date().After(r.Content[j].Date())
-} /*}}}*/
+}
 
-func (r *Result) Swap(i, j int) { /*{{{*/
+func (r *Result) Swap(i, j int) {
 	r.Content[i], r.Content[j] = r.Content[j], r.Content[i]
-} /*}}}*/
+}
 
 //Get may get something from the dataCenter
 //If you want get sth special, give the filter arg
 //Otherwise, get all
 //Some internal error will be returned
-func Get(args ...Keyer) (*Result, error) { /*{{{*/
+func Get(args ...Keyer) (*Result, error) {
 	r := &request{
 		cmd:    GET,
 		args:   make([]interface{}, len(args)),
@@ -84,4 +84,4 @@ func Get(args ...Keyer) (*Result, error) { /*{{{*/
 		return nil, err
 	}
 	return &Result{<-r.result}, nil
-} /*}}}*/
+}

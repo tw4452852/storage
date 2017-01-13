@@ -44,19 +44,19 @@ type githubResource struct {
 	etag string
 }
 
-func newGithubClient(client *ghc.GithubClient) *githubClient { /*{{{*/
+func newGithubClient(client *ghc.GithubClient) *githubClient {
 	gc := &githubClient{
 		cache:        make(map[string]*githubResource),
 		GithubClient: client,
 	}
 	go gc.refresh()
 	return gc
-} /*}}}*/
+}
 
 //refresh periodically the cache
-func (gc *githubClient) refresh() { /*{{{*/
+func (gc *githubClient) refresh() {
 	timer := time.NewTicker(1 * time.Minute)
-	for _ = range timer.C {
+	for range timer.C {
 		for url := range gc.cache {
 			gr, err := execApi(gc, url, true)
 			if err != nil {
@@ -73,13 +73,13 @@ func (gc *githubClient) refresh() { /*{{{*/
 			gc.lock.Unlock()
 		}
 	}
-} /*}}}*/
+}
 
 //get the appointed resource according to the url
 //If there is a cache, just return it, otherwise,
 //emit a api request and update the cache
 //if it is a conditional request, return nil, nil when succeed
-func (gc *githubClient) get(url string) (ghc.JsonMap, error) { /*{{{*/
+func (gc *githubClient) get(url string) (ghc.JsonMap, error) {
 	gc.lock.RLock()
 	gr, found := gc.cache[url]
 	if found {
@@ -98,9 +98,9 @@ func (gc *githubClient) get(url string) (ghc.JsonMap, error) { /*{{{*/
 	defer gc.lock.Unlock()
 	gc.cache[url] = gr
 	return gr.JsonMap, nil
-} /*}}}*/
+}
 
-func execApi(client *githubClient, url string, isCondition bool) (*githubResource, error) { /*{{{*/
+func execApi(client *githubClient, url string, isCondition bool) (*githubResource, error) {
 	req, err := client.NewAPIRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -136,17 +136,17 @@ func execApi(client *githubClient, url string, isCondition bool) (*githubResourc
 		JsonMap: m,
 		etag:    etag,
 	}, nil
-} /*}}}*/
+}
 
-func NewGithubRepo(name string) Repository { /*{{{*/
+func NewGithubRepo(name string) Repository {
 	return &githubRepo{
 		name:  name,
 		posts: make(map[string]*githubPost),
 	}
-} /*}}}*/
+}
 
 //Implement the Repository interface
-func (gr *githubRepo) Setup(user, password string) error { /*{{{*/
+func (gr *githubRepo) Setup(user, password string) error {
 	//TODO:	oauth2
 	client, err := ghc.NewGithubClient(user, password,
 		ghc.AUTH_USER_PASSWORD)
@@ -156,9 +156,9 @@ func (gr *githubRepo) Setup(user, password string) error { /*{{{*/
 	gr.client = newGithubClient(client)
 	gr.user = user
 	return nil
-} /*}}}*/
+}
 
-func (gr *githubRepo) Uninstall() { /*{{{*/
+func (gr *githubRepo) Uninstall() {
 	//delete repo's post in the dataCenter
 	cleans := make([]Keyer, 0, len(gr.posts))
 	for _, p := range gr.posts {
@@ -168,9 +168,9 @@ func (gr *githubRepo) Uninstall() { /*{{{*/
 		log.Printf("remove all the posts in github repo(%s/%s) failed: %s\n",
 			gr.user, gr.name, err)
 	}
-} /*}}}*/
+}
 
-func (gr *githubRepo) Refresh() { /*{{{*/
+func (gr *githubRepo) Refresh() {
 	//get the master branch post list
 	//1.get master branch tree sha
 	//2.filter tree to get support file
@@ -225,10 +225,10 @@ func (gr *githubRepo) Refresh() { /*{{{*/
 	gr.clean(paths)
 	//add new post and update the exist ones
 	gr.update(paths)
-} /*}}}*/
+}
 
 //the paths has been sorted in increasing order
-func (gr *githubRepo) clean(paths []string) { /*{{{*/
+func (gr *githubRepo) clean(paths []string) {
 	cleans := make([]Keyer, 0)
 	for relPath, p := range gr.posts {
 		i := sort.SearchStrings(paths, relPath)
@@ -242,10 +242,10 @@ func (gr *githubRepo) clean(paths []string) { /*{{{*/
 			log.Printf("remove github post failed: %s\n", err)
 		}
 	}
-} /*}}}*/
+}
 
 //the paths has been sorted in increasing order
-func (gr *githubRepo) update(paths []string) { /*{{{*/
+func (gr *githubRepo) update(paths []string) {
 	for _, path := range paths {
 		post, found := gr.posts[path]
 		if !found {
@@ -264,9 +264,9 @@ func (gr *githubRepo) update(paths []string) { /*{{{*/
 			log.Printf("Update a github post(%s) failed: %s\n", path, e)
 		}
 	}
-} /*}}}*/
+}
 
-func (gr *githubRepo) static(path string) io.Reader { /*{{{*/
+func (gr *githubRepo) static(path string) io.Reader {
 	m, err := gr.client.get(
 		"repos/" + gr.user + "/" + gr.name + "/contents/" + path)
 	if err != nil {
@@ -275,26 +275,26 @@ func (gr *githubRepo) static(path string) io.Reader { /*{{{*/
 	}
 	return base64.NewDecoder(base64.StdEncoding,
 		strings.NewReader(strings.Replace(m.GetString("content"), "\n", "", -1)))
-} /*}}}*/
+}
 
-type githubPost struct { /*{{{*/
+type githubPost struct {
 	repo *githubRepo
 	path string
 	sha  string
 	*post
 	Generator
-} /*}}}*/
+}
 
-func newGithubPost(path string, repo *githubRepo) *githubPost { /*{{{*/
+func newGithubPost(path string, repo *githubRepo) *githubPost {
 	return &githubPost{
 		repo:      repo,
 		path:      path,
 		post:      newPost(),
 		Generator: FindGenerator(path),
 	}
-} /*}}}*/
+}
 
-func (gp *githubPost) Update() error { /*{{{*/
+func (gp *githubPost) Update() error {
 	ms, err := gp.repo.client.get(
 		"repos/" + gp.repo.user + "/" + gp.repo.name + "/contents/" + gp.path)
 	if err != nil {
@@ -323,9 +323,9 @@ func (gp *githubPost) Update() error { /*{{{*/
 	//update it sha
 	gp.sha = sha
 	return nil
-} /*}}}*/
+}
 
-func (gp *githubPost) Static(p string) io.Reader { /*{{{*/
+func (gp *githubPost) Static(p string) io.Reader {
 	p = path.Join(path.Dir(gp.path), p)
 	return gp.repo.static(p)
-} /*}}}*/
+}
