@@ -3,7 +3,6 @@ package storage
 import (
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"sync"
 	"testing"
@@ -26,11 +25,11 @@ func (e *entry) Key() string {
 func (e *entry) Date() time.Time {
 	return time.Now()
 }
-func (e *entry) Content() template.HTML {
-	return template.HTML("hello test content")
+func (e *entry) Content() string {
+	return "hello test content"
 }
-func (e *entry) Title() template.HTML {
-	return template.HTML("hello test title")
+func (e *entry) Title() string {
+	return "hello test title"
 }
 func (e *entry) Static(string) io.ReadCloser {
 	return nil

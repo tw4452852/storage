@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"html/template"
 	"strings"
 	"sync"
 	"time"
@@ -12,7 +11,7 @@ type meta struct {
 	key     string
 	title   string
 	date    time.Time
-	content template.HTML
+	content string
 	tags    []string
 	isSlide bool
 }
@@ -34,16 +33,16 @@ func (p *post) Date() time.Time {
 	return p.date
 }
 
-func (p *post) Content() template.HTML {
+func (p *post) Content() string {
 	p.RLock()
 	defer p.RUnlock()
 	return p.content
 }
 
-func (p *post) Title() template.HTML {
+func (p *post) Title() string {
 	p.RLock()
 	defer p.RUnlock()
-	return template.HTML(p.title)
+	return p.title
 }
 
 func (p *post) Key() string {

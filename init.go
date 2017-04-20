@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"html/template"
 	"io"
 	"time"
 )
@@ -28,8 +27,8 @@ type Staticer interface {
 // Poster represet a post
 type Poster interface {
 	Date() time.Time
-	Content() template.HTML
-	Title() template.HTML
+	Content() string
+	Title() string
 	Keyer
 	Staticer
 	Update() error

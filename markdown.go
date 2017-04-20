@@ -3,7 +3,6 @@ package storage
 import (
 	"bytes"
 	"errors"
-	"html/template"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -69,14 +68,14 @@ func (MarkdownGenerator) Generate(input io.Reader, _ Staticer) (error, *meta) {
 		}
 	}
 	// content
-	remain := strings.TrimSpace(string(c[firstLineIndex+1:]))
-	content := template.HTML(markdown([]byte(remain), key))
+	remain := bytes.TrimSpace(c[firstLineIndex+1:])
+	content := markdown(remain, key)
 
 	return nil, &meta{
 		key:     key,
 		title:   title,
 		date:    t,
-		content: content,
+		content: string(content),
 		tags:    tags,
 		isSlide: false,
 	}

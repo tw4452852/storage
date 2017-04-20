@@ -260,7 +260,7 @@ func (presentGenerator) generate(input io.Reader, s Staticer, tmpl *template.Tem
 		title:   doc.Title,
 		date:    doc.Time,
 		key:     key,
-		content: template.HTML(b.String()),
+		content: b.String(),
 		tags:    doc.Tags,
 		isSlide: tmpl == slideTmpl,
 	}
