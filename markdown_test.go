@@ -153,15 +153,12 @@ func TestMarkDownGenerate(t *testing.T) {
 }
 
 func TestMarkDownImage(t *testing.T) {
-	type Expect struct {
-		path string
-	}
 	type Case struct {
 		prepare   func()
 		clean     func()
 		path      string
 		updateErr error
-		expect    *Expect
+		expect    []string
 	}
 	cases := []*Case{
 		{
@@ -174,22 +171,22 @@ func TestMarkDownImage(t *testing.T) {
 			},
 			filepath.Join(repoRoot, "11.md"),
 			nil,
-			&Expect{
-				"/1/1.png",
+			[]string{
+				"/images/hello_world//1/1.png",
 			},
 		},
 		{
 			func() {
 				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte("hello world | 2012-12-01 |tag1\n![1](1/1.png)\n"), 0777)
+					[]byte("hello world | 2012-12-01 |tag1\n![1](1/1.png)\n![2](http://2/2.png)\n"), 0777)
 			},
 			func() {
 				os.Remove(filepath.Join(repoRoot, "11.md"))
 			},
 			filepath.Join(repoRoot, "11.md"),
 			nil,
-			&Expect{
-				"1/1.png",
+			[]string{
+				"/images/hello_world/1/1.png",
 			},
 		},
 	}
@@ -207,11 +204,17 @@ func TestMarkDownImage(t *testing.T) {
 		if c.updateErr != nil && c.expect == nil {
 			return nil
 		}
-		expect := imagePrefix + lp.Key() + "/" + c.expect.path
 		content := string(lp.Content())
-		if !strings.Contains(content, expect) {
-			return fmt.Errorf("can't find (%s) in (%s)\n", expect, content)
+		imageLinks := lp.StaticList()
+		for _, expect := range c.expect {
+			if !strings.Contains(content, expect) {
+				return fmt.Errorf("can't find (%s) in (%s)\n", expect, content)
+			}
 		}
+		if !reflect.DeepEqual(imageLinks, c.expect) {
+			return fmt.Errorf("imageLinks not equal: expect %v, got %v", c.expect, imageLinks)
+		}
+
 		return nil
 	}
 

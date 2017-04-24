@@ -8,12 +8,13 @@ import (
 
 // meta contain the necessary infomations of a post
 type meta struct {
-	key     string
-	title   string
-	date    time.Time
-	content string
-	tags    []string
-	isSlide bool
+	key        string
+	title      string
+	date       time.Time
+	content    string
+	tags       []string
+	isSlide    bool
+	staticList []string
 }
 
 // post represent a poster instance
@@ -63,6 +64,12 @@ func (p *post) IsSlide() bool {
 	return p.isSlide
 }
 
+func (p *post) StaticList() []string {
+	p.RLock()
+	defer p.RUnlock()
+	return p.staticList
+}
+
 func (p *post) update(m *meta) {
 	// update meta
 	p.Lock()
@@ -77,10 +84,7 @@ func title2Key(title string) string {
 
 const imagePrefix = "/images/" //add this prefix to the origin image link
 func generateImageLink(key, link string) string {
-	if needChangeImageLink(link) {
-		return imagePrefix + key + "/" + link
-	}
-	return link
+	return imagePrefix + key + "/" + link
 }
 
 // wantChange check whether the image's link need to add prefix

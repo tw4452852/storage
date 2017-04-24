@@ -69,20 +69,26 @@ func (MarkdownGenerator) Generate(input io.Reader, _ Staticer) (error, *meta) {
 	}
 	// content
 	remain := bytes.TrimSpace(c[firstLineIndex+1:])
-	content := markdown(remain, key)
+	renderer := &myRender{
+		key:      key,
+		Renderer: blackfriday.HtmlRenderer(htmlFlags, "", ""),
+	}
+	content := blackfriday.Markdown(remain, renderer, extensions)
 
 	return nil, &meta{
-		key:     key,
-		title:   title,
-		date:    t,
-		content: string(content),
-		tags:    tags,
-		isSlide: false,
+		key:        key,
+		title:      title,
+		date:       t,
+		content:    string(content),
+		tags:       tags,
+		isSlide:    false,
+		staticList: renderer.images,
 	}
 }
 
 type myRender struct {
-	key string //myself post key
+	images []string // collect image links
+	key    string   // myself post key
 	blackfriday.Renderer
 }
 
@@ -94,14 +100,10 @@ func (mr *myRender) BlockCode(out *bytes.Buffer, text []byte, lang string) {
 
 // add prefix to img link
 func (mr *myRender) Image(out *bytes.Buffer, link, title, alt []byte) {
-	mr.Renderer.Image(out, []byte(generateImageLink(mr.key, string(link))), title, alt)
-}
-
-func markdown(input []byte, key string) []byte {
-	// set up the HTML renderer
-	renderer := &myRender{
-		key:      key,
-		Renderer: blackfriday.HtmlRenderer(htmlFlags, "", ""),
+	if slink := string(link); needChangeImageLink(slink) {
+		imageLink := generateImageLink(mr.key, slink)
+		link = []byte(imageLink)
+		mr.images = append(mr.images, imageLink)
 	}
-	return blackfriday.Markdown(input, renderer, extensions)
+	mr.Renderer.Image(out, link, title, alt)
 }

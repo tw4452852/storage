@@ -34,4 +34,5 @@ type Poster interface {
 	Update() error
 	Tags() []string
 	IsSlide() bool
+	StaticList() []string
 }

@@ -249,24 +249,28 @@ func (presentGenerator) generate(input io.Reader, s Staticer, tmpl *template.Tem
 		return err, nil
 	}
 	key := title2Key(doc.Title)
-	fixImageLink(doc, key)
+
+	images := fixImageLink(doc, key)
+
 	// TODO: buffer pool
 	b := new(bytes.Buffer)
 	err = doc.Render(b, tmpl)
 	if err != nil {
 		return err, nil
 	}
+
 	return nil, &meta{
-		title:   doc.Title,
-		date:    doc.Time,
-		key:     key,
-		content: b.String(),
-		tags:    doc.Tags,
-		isSlide: tmpl == slideTmpl,
+		title:      doc.Title,
+		date:       doc.Time,
+		key:        key,
+		content:    b.String(),
+		tags:       doc.Tags,
+		isSlide:    tmpl == slideTmpl,
+		staticList: images,
 	}
 }
 
-func fixImageLink(doc *present.Doc, key string) {
+func fixImageLink(doc *present.Doc, key string) (images []string) {
 	var checkElem func(present.Elem) present.Elem
 	checkElem = func(e present.Elem) present.Elem {
 		if s, ok := e.(present.Section); ok {
@@ -275,12 +279,16 @@ func fixImageLink(doc *present.Doc, key string) {
 			}
 		}
 		if image, ok := e.(present.Image); ok {
-			image.URL = generateImageLink(key, image.URL)
-			return image
+			if needChangeImageLink(image.URL) {
+				image.URL = generateImageLink(key, image.URL)
+				images = append(images, image.URL)
+				return image
+			}
 		}
 		return e
 	}
 	for i, s := range doc.Sections {
 		doc.Sections[i] = checkElem(s).(present.Section)
 	}
+	return
 }

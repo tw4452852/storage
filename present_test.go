@@ -12,6 +12,7 @@ func TestArticleGenerate(t *testing.T) {
 	type Expect struct {
 		path, title, date, content string
 		tags                       []string
+		staticList                 []string
 	}
 	type Case struct {
 		prepare   func()
@@ -139,7 +140,8 @@ is indented (however you like)</pre></div>
     Again, more text
   </p>
 `,
-				tags: []string{"foo", "bar", "baz"},
+				tags:       []string{"foo", "bar", "baz"},
+				staticList: []string{"/images/Title/image.jpg"},
 			},
 		},
 	}
@@ -159,11 +161,12 @@ is indented (however you like)</pre></div>
 			return nil
 		}
 		real := &Expect{
-			path:    lp.path,
-			title:   string(lp.Title()),
-			date:    lp.Date().Format(TimePattern),
-			content: string(lp.Content()),
-			tags:    lp.Tags(),
+			path:       lp.path,
+			title:      string(lp.Title()),
+			date:       lp.Date().Format(TimePattern),
+			content:    string(lp.Content()),
+			tags:       lp.Tags(),
+			staticList: lp.StaticList(),
 		}
 		if real.path != c.expect.path {
 			return fmt.Errorf("path not equal\n")
@@ -187,6 +190,10 @@ is indented (however you like)</pre></div>
 			return fmt.Errorf("tags not equal: %v - %v\n", real.tags,
 				c.expect.tags)
 		}
+		if !reflect.DeepEqual(real.staticList, c.expect.staticList) {
+			return fmt.Errorf("staticList not equal: %v - %v\n", real.staticList,
+				c.expect.staticList)
+		}
 		return nil
 	}
 
@@ -201,6 +208,7 @@ func TestSlideGenerate(t *testing.T) {
 	type Expect struct {
 		path, title, date, content string
 		tags                       []string
+		staticList                 []string
 	}
 	type Case struct {
 		prepare   func()
@@ -377,7 +385,8 @@ func TestSlideGenerate(t *testing.T) {
           </article>
 
 `,
-				tags: []string{"foo", "bar", "baz"},
+				tags:       []string{"foo", "bar", "baz"},
+				staticList: []string{"/images/Title/image.jpg"},
 			},
 		},
 	}
@@ -397,11 +406,12 @@ func TestSlideGenerate(t *testing.T) {
 			return nil
 		}
 		real := &Expect{
-			path:    lp.path,
-			title:   string(lp.Title()),
-			date:    lp.Date().Format(TimePattern),
-			content: string(lp.Content()),
-			tags:    lp.Tags(),
+			path:       lp.path,
+			title:      string(lp.Title()),
+			date:       lp.Date().Format(TimePattern),
+			content:    string(lp.Content()),
+			tags:       lp.Tags(),
+			staticList: lp.StaticList(),
 		}
 		if real.path != c.expect.path {
 			return fmt.Errorf("path not equal\n")
@@ -424,6 +434,10 @@ func TestSlideGenerate(t *testing.T) {
 		if !reflect.DeepEqual(real.tags, c.expect.tags) {
 			return fmt.Errorf("tags not equal: %v - %v\n", real.tags,
 				c.expect.tags)
+		}
+		if !reflect.DeepEqual(real.staticList, c.expect.staticList) {
+			return fmt.Errorf("staticList not equal: %v - %v\n", real.staticList,
+				c.expect.staticList)
 		}
 		return nil
 	}

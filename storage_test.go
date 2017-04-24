@@ -43,6 +43,9 @@ func (e *entry) Tags() []string {
 func (e *entry) IsSlide() bool {
 	return false
 }
+func (e *entry) StaticList() []string {
+	return nil
+}
 
 type invalidEntry struct {
 	data string
