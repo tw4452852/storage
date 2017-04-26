@@ -263,7 +263,7 @@ func (presentGenerator) generate(input io.Reader, s Staticer, tmpl *template.Tem
 		title:      doc.Title,
 		date:       doc.Time,
 		key:        key,
-		content:    b.String(),
+		content:    Bytes2String(b.Bytes()),
 		tags:       doc.Tags,
 		isSlide:    tmpl == slideTmpl,
 		staticList: images,

@@ -79,7 +79,7 @@ func (MarkdownGenerator) Generate(input io.Reader, _ Staticer) (error, *meta) {
 		key:        key,
 		title:      title,
 		date:       t,
-		content:    string(content),
+		content:    Bytes2String(content),
 		tags:       tags,
 		isSlide:    false,
 		staticList: renderer.images,
