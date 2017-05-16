@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	rdebug "runtime/debug"
 	"time"
 )
 
@@ -37,6 +38,13 @@ func UnregisterRepoType(key string) {
 type repos map[string]Repository
 
 func (rs repos) refresh(cfg *Configs) {
+	// handle github repo update panic
+	defer func() {
+		if e := recover(); e != nil {
+			log.Printf("refresh panic recovered: %s\n%s\n", e, rdebug.Stack())
+		}
+	}()
+
 	refreshed := make(map[string]bool)
 	for key := range rs {
 		refreshed[key] = false
