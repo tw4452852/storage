@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"path"
+	rdebug "runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -102,7 +103,14 @@ func (gc *githubClient) get(url string) (ghc.JsonMap, error) {
 	return gr.JsonMap, nil
 }
 
-func execApi(client *githubClient, url string, isCondition bool) (*githubResource, error) {
+func execApi(client *githubClient, url string, isCondition bool) (gr *githubResource, err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			log.Printf("execApi panic recovered: %s\n%s\n", e, rdebug.Stack())
+			err = fmt.Errorf("%s", e)
+		}
+	}()
+
 	req, err := client.NewAPIRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
