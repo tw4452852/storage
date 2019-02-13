@@ -2,225 +2,100 @@ package storage
 
 import (
 	"errors"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 )
 
-func TestMarkDownGenerate(t *testing.T) {
-	type Expect struct {
-		path, title, date, content string
-		tags                       []string
-	}
-	type Case struct {
-		prepare   func()
-		clean     func()
-		path      string
-		updateErr error
-		expect    *Expect
-	}
-	cases := []*Case{
-		{
-			nil,
-			nil,
-			"./testdata/noexist/1.md",
-			pathNotFound,
-			nil,
+func TestMarkDownMatch(t *testing.T) {
+	for name, c := range map[string]struct {
+		path   string
+		expect bool
+	}{
+		"match": {
+			path:   "a/b/c.md",
+			expect: true,
 		},
-		{
-			func() {
-				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte("hello world | 2012-12-01 |tag1, tag2\n# title hello world \n"), 0777)
-			},
-			func() {
-				os.Remove(filepath.Join(repoRoot, "11.md"))
-			},
-			filepath.Join(repoRoot, "11.md"),
-			nil,
-			&Expect{
-				path:    filepath.Join(repoRoot, "11.md"),
-				title:   "hello world",
-				date:    "2012-12-01",
-				content: "<h1>title hello world</h1>\n",
-				tags:    []string{"tag1", "tag2"},
-			},
+		"unmatch": {
+			path:   "d/e/f.mm",
+			expect: false,
 		},
-		{
-			func() {
-				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte("hello world | 2012-12-01 | \n "), 0777)
-			},
-			func() {
-				os.Remove(filepath.Join(repoRoot, "11.md"))
-			},
-			filepath.Join(repoRoot, "11.md"),
-			nil,
-			&Expect{
-				path:    filepath.Join(repoRoot, "11.md"),
-				title:   "hello world",
-				date:    "2012-12-01",
-				content: "",
-				tags:    []string{},
-			},
-		},
-		{
-			func() {
-				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte(" hello world | 2012-12-01 | tag1"), 0777)
-			},
-			func() {
-				os.Remove(filepath.Join(repoRoot, "11.md"))
-			},
-			filepath.Join(repoRoot, "11.md"),
-			errors.New("generateAll: there must be at least one line"),
-			nil,
-		},
-		{
-			func() {
-				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte(" hello world & 2012-12-01\n"), 0777)
-			},
-			func() {
-				os.Remove(filepath.Join(repoRoot, "11.md"))
-			},
-			filepath.Join(repoRoot, "11.md"),
-			errors.New("generateAll: can't find title, date and tags"),
-			nil,
-		},
-		{
-			func() {
-				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte(" hello world || 2012-12-01\n"), 0777)
-			},
-			func() {
-				os.Remove(filepath.Join(repoRoot, "11.md"))
-			},
-			filepath.Join(repoRoot, "11.md"),
-			errors.New("parsing time"),
-			nil,
-		},
-	}
-
-	runCase := func(c *Case) error {
-		if c.clean != nil {
-			defer c.clean()
-		}
-		if c.prepare != nil {
-			c.prepare()
-		}
-		lp := newLocalPost(c.path)
-		if err := matchError(c.updateErr, lp.Update()); err != nil {
-			return err
-		}
-		if c.updateErr != nil && c.expect == nil {
-			return nil
-		}
-		real := &Expect{
-			path:    lp.path,
-			title:   string(lp.Title()),
-			date:    lp.Date().Format(TimePattern),
-			content: string(lp.Content()),
-			tags:    lp.Tags(),
-		}
-		if real.path != c.expect.path {
-			return fmt.Errorf("path not equal\n")
-		}
-		if real.title != c.expect.title {
-			return fmt.Errorf("title not equal\n")
-		}
-		if real.date != c.expect.date {
-			return fmt.Errorf("date not equal\n")
-		}
-		if real.content != c.expect.content {
-			return fmt.Errorf("content not equal\n")
-		}
-		if !reflect.DeepEqual(real.tags, c.expect.tags) {
-			return fmt.Errorf("tags not equal: %#V - %#V\n", real.tags,
-				c.expect.tags)
-		}
-		return nil
-	}
-
-	for i, c := range cases {
-		if err := runCase(c); err != nil {
-			t.Errorf("case %d error: %s\n", i, err)
-		}
+	} {
+		c := c
+		t.Run(name, func(t *testing.T) {
+			if got := (markdownGenerator{}).Match(c.path); got != c.expect {
+				t.Errorf("got %v, but want %v\n", got, c.expect)
+			}
+		})
 	}
 }
 
-func TestMarkDownImage(t *testing.T) {
-	type Case struct {
-		prepare   func()
-		clean     func()
-		path      string
-		updateErr error
-		expect    []string
-	}
-	cases := []*Case{
-		{
-			func() {
-				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte("hello world | 2012-12-01 | \n![1](/1/1.png)\n"), 0777)
-			},
-			func() {
-				os.Remove(filepath.Join(repoRoot, "11.md"))
-			},
-			filepath.Join(repoRoot, "11.md"),
-			nil,
-			[]string{
-				"/images/hello_world//1/1.png",
-			},
+func TestMarkDownGenerate(t *testing.T) {
+	for name, c := range map[string]struct {
+		input        string
+		expectErr    error
+		expectResult Poster
+	}{
+		"normal": {
+			input: "hello world | 2012-12-01 |tag1, tag2\n# title hello world \n",
+			expectResult: newPost(meta{
+				key:     "hello_world",
+				title:   "hello world",
+				date:    parseTime("2012-12-01"),
+				content: "<h1>title hello world</h1>\n",
+				tags:    []string{"tag1", "tag2"},
+			}),
 		},
-		{
-			func() {
-				ioutil.WriteFile(filepath.Join(repoRoot, "11.md"),
-					[]byte("hello world | 2012-12-01 |tag1\n![1](1/1.png)\n![2](http://2/2.png)\n"), 0777)
-			},
-			func() {
-				os.Remove(filepath.Join(repoRoot, "11.md"))
-			},
-			filepath.Join(repoRoot, "11.md"),
-			nil,
-			[]string{
-				"/images/hello_world/1/1.png",
-			},
+		"noTag": {
+			input: "hello world | 2012-12-01 | \n ",
+			expectResult: newPost(meta{
+				key:   "hello_world",
+				title: "hello world",
+				date:  parseTime("2012-12-01"),
+			}),
 		},
-	}
-	runCase := func(c *Case) error {
-		if c.clean != nil {
-			defer c.clean()
-		}
-		if c.prepare != nil {
-			c.prepare()
-		}
-		lp := newLocalPost(c.path)
-		if err := matchError(c.updateErr, lp.Update()); err != nil {
-			return err
-		}
-		if c.updateErr != nil && c.expect == nil {
-			return nil
-		}
-		content := string(lp.Content())
-		imageLinks := lp.StaticList()
-		for _, expect := range c.expect {
-			if !strings.Contains(content, expect) {
-				return fmt.Errorf("can't find (%s) in (%s)\n", expect, content)
+		"noContent": {
+			input:     "hello world | 2012-12-01 | tag1",
+			expectErr: errors.New("generateAll: there must be at least one line"),
+		},
+		"noTitle": {
+			input:     "hello world & 2012-12-01\n",
+			expectErr: errors.New("generateAll: can't find title, date and tags"),
+		},
+		"noTime": {
+			input:     "hello world || 2012-12-01\n",
+			expectErr: errors.New("parsing time"),
+		},
+		"oneImageLink": {
+			input: "hello world | 2012-12-01 | \n![1](/1/1.png)\n",
+			expectResult: newPost(meta{
+				key:        "hello_world",
+				title:      "hello world",
+				date:       parseTime("2012-12-01"),
+				content:    "<p><img src=\"/images/hello_world//1/1.png\" alt=\"1\" /></p>\n",
+				staticList: []string{"/images/hello_world//1/1.png"},
+			}),
+		},
+		"twoImageLinks": {
+			input: "hello world | 2012-12-01 |tag1\n![1](1/1.png)\n![2](http://2/2.png)\n",
+			expectResult: newPost(meta{
+				key:        "hello_world",
+				title:      "hello world",
+				date:       parseTime("2012-12-01"),
+				tags:       []string{"tag1"},
+				content:    "<p><img src=\"/images/hello_world/1/1.png\" alt=\"1\" />\n<img src=\"http://2/2.png\" alt=\"2\" /></p>\n",
+				staticList: []string{"/images/hello_world/1/1.png"},
+			}),
+		},
+	} {
+		c := c
+		t.Run(name, func(t *testing.T) {
+			got, err := markdownGenerator{}.Generate(strings.NewReader(c.input), nil)
+			if err = matchError(c.expectErr, err); err != nil {
+				t.Error(err)
 			}
-		}
-		if !reflect.DeepEqual(imageLinks, c.expect) {
-			return fmt.Errorf("imageLinks not equal: expect %v, got %v", c.expect, imageLinks)
-		}
-
-		return nil
-	}
-
-	for i, c := range cases {
-		if err := runCase(c); err != nil {
-			t.Errorf("case %d error: %s\n", i, err)
-		}
+			if !isPosterEqual(got, c.expectResult) {
+				t.Errorf("\n\tgot result: %#v,\n\tbut want %#v\n", got, c.expectResult)
+			}
+		})
 	}
 }

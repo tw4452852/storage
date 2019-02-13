@@ -1,52 +1,48 @@
 package storage
 
 import (
-	"os"
-	"path/filepath"
 	"reflect"
-	"runtime"
 	"testing"
 )
 
 func TestConfig(t *testing.T) {
-	var localPath string
-	if runtime.GOOS == "windows" {
-		localPath = filepath.Join(os.Getenv("GOPATH"), "/tmp/1/1")
-	} else {
-		localPath = "/tmp/1/1"
-	}
-	cases := []struct {
+	for name, c := range map[string]struct {
 		path   string
 		err    error
-		expect *Configs
+		expect Configs
 	}{
-		{
-			"./testdata/config.xml",
+		"normal": {
+			"./testdata/config.json",
 			nil,
-			&Configs{
-				[]*Config{
-					{"git", "http://github.com/1/1", "tw", "123"},
-					{"local", localPath, "", ""},
-					{"local", filepath.Join(os.Getenv("GOPATH"), "/tmp/1/1"), "", ""},
-					{"github", "http://github.com/2/2", "", "321"},
-				},
+			Configs{
+				{"git", "http://github.com/1/1", "tw", "123"},
+				{"local", "/tmp/1/1", "", ""},
+				{"local", "tmp/1/1", "", ""},
+				{"github", "http://github.com/2/2", "", "321"},
 			},
 		},
 
-		{
-			"invalid/path/to/config.xml",
+		"nonexisting": {
+			"invalid/path/to/config.json",
 			pathNotFound,
 			nil,
 		},
-	}
-	for _, c := range cases {
-		cfg, err := getConfig(c.path)
-		if e := matchError(c.err, err); e != nil {
-			t.Fatal(e)
-		}
-		if !reflect.DeepEqual(cfg, c.expect) {
-			t.Errorf("expect configs: %v\n, real configs %v\n",
-				*c.expect, *cfg)
-		}
+	} {
+		c := c
+		t.Run(name, func(t *testing.T) {
+			cfg, err := getConfig(c.path)
+			if e := matchError(c.err, err); e != nil {
+				t.Fatal(e)
+			}
+			if len(cfg) != len(c.expect) {
+				t.Errorf("got %d cfg, but want %d\n", len(cfg), len(c.expect))
+			}
+			for i := 0; i < len(c.expect); i++ {
+				if !reflect.DeepEqual(cfg[i], c.expect[i]) {
+					t.Errorf("config %d different: got %#v, want %#v\n",
+						i, cfg[i], c.expect[i])
+				}
+			}
+		})
 	}
 }

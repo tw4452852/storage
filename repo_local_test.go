@@ -3,101 +3,89 @@ package storage
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 )
 
-var repoRoot = filepath.FromSlash(filepath.Join(os.Getenv("GOPATH"),
-	"src/github.com/tw4452852/storage/testdata/localRepo/"))
-
-func TestLocalSetup(t *testing.T) {
-	cases := []struct {
+func TestNewLocalRepo(t *testing.T) {
+	for name, c := range map[string]struct {
 		root   string
 		expect error
 	}{
-		{
-			"./testdata/noexist/",
-			pathNotFound,
+		"noExistDir": {
+			root:   "./testdata/noexist/",
+			expect: pathNotFound,
 		},
-		{
-			"./testdata/localRepo.file",
-			errors.New("you can't specify a file as a repo root"),
+		"fileRoot": {
+			root:   "./testdata/localRepo.file",
+			expect: errors.New("you can't specify a file as a repo root"),
 		},
-		{
-			"./testdata/localRepo/",
-			nil,
+		"normal": {
+			root: "./testdata/localRepo/",
 		},
-	}
-
-	for _, c := range cases {
-		lr := NewLocalRepo(c.root)
-		if e := matchError(c.expect, lr.Setup("", "")); e != nil {
-			t.Error(e)
-		}
-		r := lr.(*localRepo)
-		if r.root != c.root {
-			t.Errorf("expect repo root(%s), but get(%s)\n",
-				c.root, r.root)
-		}
+	} {
+		c := c
+		t.Run(name, func(t *testing.T) {
+			lr, e := newLocalRepo(c.root)
+			if e = matchError(c.expect, e); e != nil {
+				t.Fatal(e)
+			}
+			if r, ok := lr.(*localRepo); ok {
+				if r.root != c.root {
+					t.Errorf("expect repo root(%s), but get(%s)\n",
+						c.root, r.root)
+				}
+			}
+		})
 	}
 }
 
-func TestLocalRepo(t *testing.T) {
-	repo := NewLocalRepo(repoRoot)
-	if err := repo.Setup("", ""); err != nil {
+func TestLocalRepoRefresh(t *testing.T) {
+	repo, err := newLocalRepo("./testdata/localRepo/")
+	if err != nil {
 		t.Fatal(err)
 	}
-	repo.Uninstall()
-	lr := repo.(*localRepo)
-	cases := []struct {
-		prepare func()
-		check   func()
-	}{
-		{
-			prepare: nil,
-			check: func() {
-				expect := map[string]*localPost{
-					"1.md":      newLocalPost(filepath.Join(repoRoot, "1.md")),
-					"1.article": newLocalPost(filepath.Join(repoRoot, "1.article")),
-					"1.slide":   newLocalPost(filepath.Join(repoRoot, "1.slide")),
-					"level1" + string(filepath.Separator) + "1.md": newLocalPost(filepath.Join(repoRoot, "level1/1.md")),
-				}
-				lr.update()
-				if err := checkLocalPosts(expect, lr.posts); err != nil {
-					t.Error(err)
-				}
-			},
-		},
-
-		{
-			prepare: func() {
-				lr.posts["1.md"] = newLocalPost(filepath.Join(repoRoot, "1.md"))
-				lr.posts["noexist.md"] = newLocalPost(filepath.Join(repoRoot, "noexist.md"))
-				lr.posts["level1/noexist.md"] = newLocalPost(filepath.Join(repoRoot, "level1/noexist.md"))
-			},
-			check: func() {
-				expect := map[string]*localPost{
-					"1.md":      newLocalPost(filepath.Join(repoRoot, "1.md")),
-					"1.article": newLocalPost(filepath.Join(repoRoot, "1.article")),
-					"1.slide":   newLocalPost(filepath.Join(repoRoot, "1.slide")),
-					"level1" + string(filepath.Separator) + "1.md": newLocalPost(filepath.Join(repoRoot, "level1/1.md")),
-				}
-				lr.clean()
-				if err := checkLocalPosts(expect, lr.posts); err != nil {
-					t.Error(err)
-				}
-			},
-		},
+	if err = repo.Install("", ""); err != nil {
+		t.Fatal(err)
 	}
+	lr := repo.(*localRepo)
 
-	for _, c := range cases {
-		if c.prepare != nil {
-			c.prepare()
-		}
-		if c.check != nil {
-			c.check()
-		}
+	for name, c := range map[string]struct {
+		prepare map[string]*localPost
+		expect  map[string]*localPost
+	}{
+		"update": {
+			prepare: map[string]*localPost{},
+			expect: map[string]*localPost{
+				"1.md":      newLocalPost(filepath.Join("./testdata/localRepo/", "1.md")),
+				"1.article": newLocalPost(filepath.Join("./testdata/localRepo/", "1.article")),
+				"1.slide":   newLocalPost(filepath.Join("./testdata/localRepo/", "1.slide")),
+				"level1" + string(filepath.Separator) + "1.md": newLocalPost(filepath.Join("./testdata/localRepo/", "level1/1.md")),
+			},
+		},
+
+		"clean": {
+			prepare: map[string]*localPost{
+				"1.md":              newLocalPost(filepath.Join("./testdata/localRepo/", "1.md")),
+				"noexist.md":        newLocalPost(filepath.Join("./testdata/localRepo/", "noexist.md")),
+				"level1/noexist.md": newLocalPost(filepath.Join("./testdata/localRepo/", "level1/noexist.md")),
+			},
+			expect: map[string]*localPost{
+				"1.md":      newLocalPost(filepath.Join("./testdata/localRepo/", "1.md")),
+				"1.article": newLocalPost(filepath.Join("./testdata/localRepo/", "1.article")),
+				"1.slide":   newLocalPost(filepath.Join("./testdata/localRepo/", "1.slide")),
+				"level1" + string(filepath.Separator) + "1.md": newLocalPost(filepath.Join("./testdata/localRepo/", "level1/1.md")),
+			},
+		},
+	} {
+		c := c
+		t.Run(name, func(t *testing.T) {
+			lr.posts = c.prepare
+			lr.Refresh(&nopStorage{})
+			if err := checkLocalPosts(c.expect, lr.posts); err != nil {
+				t.Error(err)
+			}
+		})
 	}
 }
 

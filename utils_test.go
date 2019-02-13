@@ -20,7 +20,7 @@ func TestBytes2String(t *testing.T) {
 	} {
 		c := c
 		t.Run(name, func(t *testing.T) {
-			if got := Bytes2String(c.input); got != c.expect {
+			if got := bytes2String(c.input); got != c.expect {
 				t.Errorf("result not match: expect %v, got %v", c.expect, got)
 			}
 		})

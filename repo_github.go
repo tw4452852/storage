@@ -19,7 +19,7 @@ import (
 )
 
 func init() {
-	RegisterRepoType("github", NewGithubRepo)
+	RegisterRepoType("github", newGithubRepo)
 }
 
 var nilError = errors.New("nil error")
@@ -148,15 +148,15 @@ func execApi(client *githubClient, url string, isCondition bool) (gr *githubReso
 	}, nil
 }
 
-func NewGithubRepo(name string) Repository {
+func newGithubRepo(name string) (Repository, error) {
 	return &githubRepo{
 		name:  name,
 		posts: make(map[string]*githubPost),
-	}
+	}, nil
 }
 
 // Implement the Repository interface
-func (gr *githubRepo) Setup(user, password string) error {
+func (gr *githubRepo) Install(user, password string) error {
 	// TODO:	oauth2
 	client, err := ghc.NewGithubClient(user, password,
 		ghc.AUTH_USER_PASSWORD)
@@ -168,19 +168,19 @@ func (gr *githubRepo) Setup(user, password string) error {
 	return nil
 }
 
-func (gr *githubRepo) Uninstall() {
+func (gr *githubRepo) Uninstall(s Storager) {
 	// delete repo's post in the dataCenter
 	cleans := make([]Keyer, 0, len(gr.posts))
 	for _, p := range gr.posts {
 		cleans = append(cleans, p)
 	}
-	if err := Remove(cleans...); err != nil {
+	if err := s.Remove(cleans...); err != nil {
 		log.Printf("remove all the posts in github repo(%s/%s) failed: %s\n",
 			gr.user, gr.name, err)
 	}
 }
 
-func (gr *githubRepo) Refresh() {
+func (gr *githubRepo) Refresh(s Storager) {
 	// get the master branch post list
 	// 1.get master branch tree sha
 	// 2.filter tree to get support file
@@ -232,13 +232,13 @@ func (gr *githubRepo) Refresh() {
 	}
 	sort.Strings(paths)
 	// delete the no exist posts
-	gr.clean(paths)
+	gr.clean(s, paths)
 	// add new post and update the exist ones
-	gr.update(paths)
+	gr.update(s, paths)
 }
 
 // the paths has been sorted in increasing order
-func (gr *githubRepo) clean(paths []string) {
+func (gr *githubRepo) clean(s Storager, paths []string) {
 	cleans := make([]Keyer, 0)
 	for relPath, p := range gr.posts {
 		i := sort.SearchStrings(paths, relPath)
@@ -248,29 +248,23 @@ func (gr *githubRepo) clean(paths []string) {
 		}
 	}
 	if len(cleans) != 0 {
-		if err := Remove(cleans...); err != nil {
+		if err := s.Remove(cleans...); err != nil {
 			log.Printf("remove github post failed: %s\n", err)
 		}
 	}
 }
 
 // the paths has been sorted in increasing order
-func (gr *githubRepo) update(paths []string) {
+func (gr *githubRepo) update(s Storager, paths []string) {
 	for _, path := range paths {
 		post, found := gr.posts[path]
 		if !found {
-			gp := newGithubPost(path, gr)
-			gr.posts[path] = gp
-			if debug {
-				log.Printf("Add a new github post(%s)\n", path)
-			}
-			if e := gp.Update(); e != nil {
-				log.Printf("Add a new github post(%s) failed: %s\n", path, e)
-			}
-			continue
+			post = newGithubPost(path, gr)
+			gr.posts[path] = post
+			dprintf("Add a new github post(%s)\n", path)
 		}
 		// update a exist one
-		if e := post.Update(); e != nil {
+		if e := post.update(s); e != nil {
 			log.Printf("Update a github post(%s) failed: %s\n", path, e)
 		}
 	}
@@ -288,50 +282,57 @@ func (gr *githubRepo) static(path string) io.Reader {
 }
 
 type githubPost struct {
-	repo *githubRepo
-	path string
-	sha  string
-	*post
-	Generator
+	Poster
+	repo    *githubRepo
+	path    string
+	gen     Generator
+	lastSha string
 }
 
 func newGithubPost(path string, repo *githubRepo) *githubPost {
 	return &githubPost{
-		repo:      repo,
-		path:      path,
-		post:      newPost(),
-		Generator: FindGenerator(path),
+		repo: repo,
+		path: path,
+		gen:  FindGenerator(path),
 	}
 }
 
-func (gp *githubPost) Update() error {
+func (gp *githubPost) update(s Storager) error {
 	ms, err := gp.repo.client.get(
 		"repos/" + gp.repo.user + "/" + gp.repo.name + "/contents/" + gp.path)
 	if err != nil {
 		return err
 	}
 	sha, encodedContent := ms.GetString("sha"), ms.GetString("content")
-	if sha == gp.sha {
+	if sha == gp.lastSha {
 		// no need to update
 		return nil
 	}
 	encodedContent = strings.Replace(encodedContent, "\n", "", -1)
-	var m *meta
-	err, m = gp.Generate(base64.NewDecoder(base64.StdEncoding,
+
+	p, err := gp.gen.Generate(base64.NewDecoder(base64.StdEncoding,
 		strings.NewReader(encodedContent)), gp)
 	if err != nil {
 		return err
 	}
-	gp.update(m)
-	if debug {
-		log.Printf("update a github post(%s)\n", gp.path)
+	// remove the old one if any
+	if gp.Poster != nil {
+		err = s.Remove(gp)
+		if err != nil {
+			return err
+		}
 	}
-	// add it to the dataCenter
-	if err = Add(gp); err != nil {
+	gp.Poster = p
+	// add the new one
+	err = s.Add(gp)
+	if err != nil {
 		return err
 	}
-	// update it sha
-	gp.sha = sha
+	dprintf("update a github post(%s)\n", gp.path)
+
+	// update sha
+	gp.lastSha = sha
+
 	return nil
 }
 

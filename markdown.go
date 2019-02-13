@@ -22,44 +22,45 @@ const (
 		blackfriday.EXTENSION_AUTOLINK |
 		blackfriday.EXTENSION_STRIKETHROUGH |
 		blackfriday.EXTENSION_SPACE_HEADERS
-	seperator = "|"
+	seperator   = "|"
+	timePattern = "2006-01-02"
 )
 
 func init() {
-	RegisterGenerator(MarkdownGenerator{})
+	RegisterGenerator(markdownGenerator{})
 }
 
-type MarkdownGenerator struct{}
+type markdownGenerator struct{}
 
-func (m MarkdownGenerator) Match(filename string) bool {
+func (m markdownGenerator) Match(filename string) bool {
 	return strings.HasSuffix(filename, ".md")
 }
 
-func (MarkdownGenerator) Generate(input io.Reader, _ Staticer) (error, *meta) {
+func (markdownGenerator) Generate(input io.Reader, _ Staticer) (Poster, error) {
 	c, e := ioutil.ReadAll(input)
 	if e != nil {
-		return e, nil
+		return nil, e
 	}
 	// title
 	firstLineIndex := strings.Index(string(c), "\n")
 	if firstLineIndex == -1 {
-		return errors.New("generateAll: there must be at least one line\n"), nil
+		return nil, errors.New("generateAll: there must be at least one line\n")
 	}
 	firstLine := strings.TrimSpace(string(c[:firstLineIndex]))
 	titleDateTags := strings.Split(firstLine, seperator)
 	if len(titleDateTags) != 3 {
-		return errors.New("generateAll: can't find title, date and tags\n"), nil
+		return nil, errors.New("generateAll: can't find title, date and tags\n")
 	}
 	title := strings.TrimSpace(titleDateTags[0])
 	// date
-	t, e := time.Parse(TimePattern, strings.TrimSpace(titleDateTags[1]))
+	t, e := time.Parse(timePattern, strings.TrimSpace(titleDateTags[1]))
 	if e != nil {
-		return e, nil
+		return nil, e
 	}
 	// key
 	key := title2Key(title)
 	// tags
-	tags := []string{}
+	var tags []string
 	tagsString := strings.TrimSpace(titleDateTags[2])
 	if tagsString != "" {
 		tags = strings.Split(tagsString, ",")
@@ -75,15 +76,15 @@ func (MarkdownGenerator) Generate(input io.Reader, _ Staticer) (error, *meta) {
 	}
 	content := blackfriday.Markdown(remain, renderer, extensions)
 
-	return nil, &meta{
+	return newPost(meta{
 		key:        key,
 		title:      title,
 		date:       t,
-		content:    Bytes2String(content),
+		content:    bytes2String(content),
 		tags:       tags,
 		isSlide:    false,
 		staticList: renderer.images,
-	}
+	}), nil
 }
 
 type myRender struct {
