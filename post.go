@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"io"
+	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
@@ -17,14 +19,18 @@ type meta struct {
 	staticList []string
 }
 
-// post represent a poster instance
+// post represent a basic Poster instance
 type post struct {
 	sync.RWMutex
 	meta
 }
 
-func newPost() *post {
-	return new(post)
+var _ Poster = &post{}
+
+func newPost(m meta) *post {
+	return &post{
+		meta: m,
+	}
 }
 
 // implement Poster's common part
@@ -70,12 +76,8 @@ func (p *post) StaticList() []string {
 	return p.staticList
 }
 
-func (p *post) update(m *meta) {
-	// update meta
-	p.Lock()
-	p.meta = *m
-	p.Unlock()
-	m = nil
+func (p *post) Static(string) io.ReadCloser {
+	return ioutil.NopCloser(strings.NewReader("nop"))
 }
 
 func title2Key(title string) string {

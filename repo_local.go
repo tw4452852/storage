@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	RegisterRepoType("local", NewLocalRepo)
+	RegisterRepoType("local", newLocalRepo)
 }
 
 type localRepo struct {
@@ -19,47 +19,49 @@ type localRepo struct {
 	posts map[string]*localPost
 }
 
-func NewLocalRepo(root string) Repository {
+func newLocalRepo(root string) (Repository, error) {
+	// root must exit
+	fi, err := os.Stat(root)
+	if err != nil {
+		return nil, err
+	}
+	// root must be a dir
+	if !fi.IsDir() {
+		return nil, errors.New("you can't specify a file as a repo root")
+	}
 	return &localRepo{
 		root:  root,
 		posts: make(map[string]*localPost),
-	}
+	}, nil
 }
 
 // implement the Repository interface
-func (lr *localRepo) Setup(user, password string) error {
-	// root Must be a dir
-	fi, err := os.Stat(lr.root)
-	if err != nil {
-		return err
-	}
-	if !fi.IsDir() {
-		return errors.New("you can't specify a file as a repo root")
-	}
+func (lr *localRepo) Install(user, password string) error {
+	// TODO: verify user and password pair
 	return nil
 }
 
-func (lr *localRepo) Uninstall() {
+func (lr *localRepo) Uninstall(s Storager) {
 	// delete repo's post in the dataCenter
 	cleans := make([]Keyer, 0, len(lr.posts))
 	for _, p := range lr.posts {
 		cleans = append(cleans, p)
 	}
-	if err := Remove(cleans...); err != nil {
+	if err := s.Remove(cleans...); err != nil {
 		log.Printf("remove all the posts in local repo(%s) failed: %s\n",
 			lr.root, err)
 	}
 }
 
-func (lr *localRepo) Refresh() {
+func (lr *localRepo) Refresh(s Storager) {
 	// delete the removed files
-	lr.clean()
+	lr.clean(s)
 	// add newer post and update the exist post
-	lr.update()
+	lr.update(s)
 }
 
 // clean the noexist posts
-func (lr *localRepo) clean() {
+func (lr *localRepo) clean(s Storager) {
 	cleans := make([]Keyer, 0)
 	for relPath, p := range lr.posts {
 		absPath := filepath.Join(lr.root, relPath)
@@ -70,37 +72,31 @@ func (lr *localRepo) clean() {
 		}
 	}
 	if len(cleans) != 0 {
-		if err := Remove(cleans...); err != nil {
+		if err := s.Remove(cleans...); err != nil {
 			log.Printf("remove local post failed: %s\n", err)
 		}
 	}
 }
 
 // update add new post or update the exist ones
-func (lr *localRepo) update() {
+func (lr *localRepo) update(s Storager) {
 	if err := filepath.Walk(lr.root, func(path string, info os.FileInfo, err error) error {
-		// only watch the special filetype
+		// only focus on regular files
 		if info.IsDir() {
 			return nil
 		}
 		relPath, _ := filepath.Rel(lr.root, path)
 		post, found := lr.posts[relPath]
 		if !found {
-			if FindGenerator(path) == nil {
+			post = newLocalPost(path)
+			if post == nil {
 				return nil
 			}
-			lp := newLocalPost(path)
-			lr.posts[relPath] = lp
-			if debug {
-				log.Printf("Add a new local post(%s)\n", path)
-			}
-			if e := lp.Update(); e != nil {
-				log.Printf("Add local post(%s) failed: %s\n", lp.path, e)
-			}
-			return nil
+			lr.posts[relPath] = post
+			dprintf("Add a new local post(%s)\n", path)
 		}
-		// update a exist one
-		if e := post.Update(); e != nil {
+		// update an existing one
+		if e := post.update(s); e != nil {
 			log.Printf("Update a local post(%s) failed: %s\n", path, e)
 		}
 		return nil
@@ -112,21 +108,24 @@ func (lr *localRepo) update() {
 
 // represet a local post
 type localPost struct {
+	Poster
 	path       string
+	gen        Generator
 	lastUpdate time.Time
-	*post
-	Generator
 }
 
 func newLocalPost(path string) *localPost {
+	gen := FindGenerator(path)
+	if gen == nil {
+		return nil
+	}
 	return &localPost{
-		path:      path,
-		post:      newPost(),
-		Generator: FindGenerator(path),
+		path: path,
+		gen:  gen,
 	}
 }
 
-func (lp *localPost) Update() error {
+func (lp *localPost) update(s Storager) error {
 	file, err := os.Open(lp.path)
 	if err != nil {
 		return err
@@ -137,16 +136,25 @@ func (lp *localPost) Update() error {
 		return err
 	}
 	if ut := fi.ModTime(); ut.After(lp.lastUpdate) {
-		err, m := lp.Generate(file, lp)
+		p, err := lp.gen.Generate(file, lp)
 		if err != nil {
 			return err
 		}
-		lp.update(m)
-		lp.lastUpdate = ut
-		// update the content in dataCenter
-		if err := Add(lp); err != nil {
-			log.Printf("update a local post failed: %s\n", err)
+		// remove the old one if any
+		if lp.Poster != nil {
+			err = s.Remove(lp)
+			if err != nil {
+				return err
+			}
 		}
+		// add the new one
+		lp.Poster = p
+		err = s.Add(lp)
+		if err != nil {
+			return nil
+		}
+
+		lp.lastUpdate = ut
 	}
 	return nil
 }

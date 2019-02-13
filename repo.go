@@ -1,124 +1,77 @@
 package storage
 
 import (
-	"errors"
 	"log"
-	"os"
-	"path/filepath"
-	rdebug "runtime/debug"
 	"time"
 )
 
 // Repository represent a repostory
 type Repository interface {
-	// used for setup a repository
-	Setup(user, password string) error
-	// used for updating a repository
-	Refresh()
-	// used for uninstall a repostory
-	Uninstall()
+	// Install the repository
+	Install(user, password string) error
+	// Update the repository's contents in storage
+	Refresh(s Storager)
+	// Uninstall the repostory
+	Uninstall(s Storager)
 }
 
-// used for Init a repository with a root path
-type InitFunction func(root string) Repository
+// Creator creates a repository with a root path
+type Creator func(root string) (Repository, error)
 
-var supportedRepoTypes = make(map[string]InitFunction)
+var supportedRepoTypes = make(map[string]Creator)
 
 // RegisterRepoType register a support repository type
 // If there is one, just update it
-func RegisterRepoType(key string, f InitFunction) {
-	supportedRepoTypes[key] = f
+func RegisterRepoType(t string, f Creator) {
+	supportedRepoTypes[t] = f
 }
 
 // UnregisterRepoType unregister a support repository type
-func UnregisterRepoType(key string) {
-	delete(supportedRepoTypes, key)
+func UnregisterRepoType(t string) {
+	delete(supportedRepoTypes, t)
 }
 
-type repos map[string]Repository
-
-func (rs repos) refresh(cfg *Configs) {
-	// handle github repo update panic
-	defer func() {
-		if e := recover(); e != nil {
-			log.Printf("refresh panic recovered: %s\n%s\n", e, rdebug.Stack())
-		}
-	}()
-
-	refreshed := make(map[string]bool)
-	for key := range rs {
-		refreshed[key] = false
+func newRepos(configPath string, s Storager) ([]Repository, error) {
+	cfg, err := getConfig(configPath)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, c := range cfg.Content {
+	var rs []Repository
+	for _, c := range cfg {
 		kind := c.Type
 		root := c.Root
-		key := kind + "-" + root
-		r, found := rs[key]
-		if !found {
-			if initF, supported := supportedRepoTypes[kind]; supported {
-				repo := initF(root)
-				if err := repo.Setup(c.User, c.Password); err != nil {
-					log.Printf("add repo: setup failed with err(%s)\n", err)
-					continue
-				}
-				log.Printf("add a repo(%q)\n", key)
-				rs[key] = repo
-				// refresh when init a repo
-				repo.Refresh()
-			} else {
-				log.Printf("add repo: type(%s) isn't supported yet\n",
-					kind)
+		if create, supported := supportedRepoTypes[kind]; supported {
+			repo, err := create(root)
+			if err != nil {
+				log.Printf("create repo failed: %s\n", err)
+				continue
 			}
-			continue
+
+			if err := repo.Install(c.User, c.Password); err != nil {
+				log.Printf("install repo failed: %s\n", err)
+				continue
+			}
+
+			rs = append(rs, repo)
+			log.Printf("add a repo, type:%s, root:%s\n", kind, root)
+		} else {
+			log.Printf("add repo: type(%s) isn't supported yet\n", kind)
 		}
-		r.Refresh()
-		refreshed[key] = true
 	}
 
-	// uninstall the repos that have been remove
-	for key, exist := range refreshed {
-		if !exist {
-			rs[key].Uninstall()
-			delete(rs, key)
-		}
+	startRepoChecker(rs, s)
+
+	return rs, nil
+}
+
+func startRepoChecker(rs []Repository, s Storager) {
+	for _, repo := range rs {
+		go func(repo Repository) {
+			c := time.Tick(1 * time.Second)
+			for range c {
+				repo.Refresh(s)
+			}
+		}(repo)
 	}
-}
-
-var repositories repos
-
-func initRepos(configPath string) {
-	repositories = make(repos)
-	go checkConfig(repositories, configPath)
-}
-
-func checkConfig(r repos, configPath string) {
-	// refresh every 10s
-	timer := time.NewTicker(10 * time.Second)
-	cpath := configPath
-	if !filepath.IsAbs(cpath) {
-		cpath = filepath.Join(os.Getenv("GOPATH"), cpath)
-	}
-	for range timer.C {
-		cfg, err := getConfig(cpath)
-		if err != nil {
-			// if there is some error(e.g. file doesn't exist) while reading
-			// config file, just skip this refresh
-			continue
-		}
-		r.refresh(cfg)
-	}
-	panic("not reach")
-}
-
-type StaticErr string
-
-// implement io.Reader
-func (sr StaticErr) Read(p []byte) (int, error) {
-	log.Println(sr)
-	return 0, errors.New(string(sr))
-}
-
-func (sr StaticErr) Close() error {
-	return nil
 }
