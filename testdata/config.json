@@ -1,0 +1,9 @@
+[
+	{ "type": "git", "root": "http://github.com/1/1", "username": "tw", "password": "123" },
+	{ "root": "/tmp/1/1" },
+	{ "type": "local", "root": "/tmp/1/1" },
+	{ "type": "local" },
+	{ "type": "local", "root": "tmp/1/1" },
+	{ "invalidroot": "/tmp/1/1" },
+	{ "type": "github", "root": "http://github.com/2/2", "password": "321" }
+]

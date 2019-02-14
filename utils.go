@@ -5,7 +5,7 @@ import (
 	"unsafe"
 )
 
-func Bytes2String(bs []byte) string {
+func bytes2String(bs []byte) string {
 	if len(bs) == 0 {
 		return ""
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -11,7 +12,6 @@ import (
 
 func init() {
 	debug = false
-	Init("src/github.com/tw4452852/storage/testdata/config.xml")
 }
 
 type entry struct {
@@ -23,7 +23,7 @@ func (e *entry) Key() string {
 	return e.data
 }
 func (e *entry) Date() time.Time {
-	return time.Now()
+	return parseTime("2018-10-" + e.data)
 }
 func (e *entry) Content() string {
 	return "hello test content"
@@ -47,10 +47,6 @@ func (e *entry) StaticList() []string {
 	return nil
 }
 
-type invalidEntry struct {
-	data string
-}
-
 type testCase struct {
 	prepare func() error
 	input   []interface{}
@@ -59,199 +55,160 @@ type testCase struct {
 }
 
 var (
-	noKeyerErr = errors.New("arg is not a keyer")
-	noFound    = errors.New("can't find want you want")
-
 	ents = []*entry{
-		{"1"},
-		{"1"},
-		{"2"},
-	}
-	inents = []*invalidEntry{
-		{"1"},
-		{"1"},
-		{"2"},
+		{"01"},
+		{"01"},
+		{"02"},
 	}
 )
 
-func TestAdd(t *testing.T) {
-	cases := []testCase{
-		// add
-		{
-			nil,
-			[]interface{}{ents[0]},
-			nil,
-			func(*Result) error {
-				if dataCenter.find(ents[0].data) != ents[0] {
+func TestStorageAdd(t *testing.T) {
+	for name, c := range map[string]struct {
+		input   []Poster
+		checker func(s *Storage) error
+	}{
+		"addOne": {
+			input: []Poster{ents[0]},
+			checker: func(s *Storage) error {
+				if s.data[ents[0].data] != ents[0] {
 					return errors.New("add valid one failed\n")
 				}
 				return nil
 			},
 		},
-		{
-			nil,
-			[]interface{}{ents[1], ents[2]},
-			nil,
-			func(*Result) error {
-				if dataCenter.find(ents[1].data) != ents[1] {
+		"addTwo": {
+			input: []Poster{ents[1], ents[2]},
+			checker: func(s *Storage) error {
+				if s.data[ents[1].data] != ents[1] {
 					return errors.New("valid+valid add: first is not found\n")
 				}
-				if dataCenter.find(ents[2].data) != ents[2] {
+				if s.data[ents[2].data] != ents[2] {
 					return errors.New("valid+valid add: second is not found\n")
 				}
 				return nil
 			},
 		},
-	}
-	for _, c := range cases {
-		dataCenter.reset()
-		if c.prepare != nil {
-			if err := c.prepare(); err != nil {
-				t.Fatal(err)
-			}
-		}
-		inputs := make([]Poster, len(c.input))
-		for i, p := range c.input {
-			inputs[i] = p.(Poster)
-		}
-		if e := matchError(c.err, Add(inputs...)); e != nil {
-			t.Fatal(e)
-		}
-		if c.checker != nil {
-			if err := c.checker(nil); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-}
-
-func TestUpdate(t *testing.T) {
-	cases := []testCase{
-		// update
-		{
-			nil,
-			[]interface{}{ents[0], ents[1]},
-			nil,
-			func(*Result) error {
-				if dataCenter.find(ents[0].data) != ents[1] {
+		"updateOne": {
+			input: []Poster{ents[0], ents[1]},
+			checker: func(s *Storage) error {
+				if s.data[ents[0].data] != ents[1] {
 					return errors.New("update valid+valid: not update\n")
 				}
 				return nil
 			},
 		},
-	}
-	for _, c := range cases {
-		dataCenter.reset()
-		if c.prepare != nil {
-			if err := c.prepare(); err != nil {
+	} {
+		c := c
+		t.Run(name, func(t *testing.T) {
+			s, err := New("./testdata/repos.json")
+			if err != nil {
 				t.Fatal(err)
 			}
-		}
-		inputs := make([]Poster, len(c.input))
-		for i, p := range c.input {
-			inputs[i] = p.(Poster)
-		}
-		if e := matchError(c.err, Add(inputs...)); e != nil {
-			t.Fatal(e)
-		}
-		if c.checker != nil {
-			if err := c.checker(nil); err != nil {
+			err = s.Add(c.input...)
+			if err != nil {
 				t.Fatal(err)
 			}
-		}
+			err = c.checker(s)
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
-func TestRemove(t *testing.T) {
-	cases := []testCase{
-		// remove
-		{
-			func() error {
-				if err := Add(ents[0], ents[1], ents[2]); err != nil {
+func TestStorageRemove(t *testing.T) {
+	for name, c := range map[string]struct {
+		prepare func(s *Storage) error
+		input   []Keyer
+		checker func(s *Storage) error
+	}{
+		"removeOne": {
+			prepare: func(s *Storage) error {
+				if err := s.Add(ents[0], ents[1], ents[2]); err != nil {
 					return err
 				}
 				return nil
 			},
-			[]interface{}{ents[0]},
-			nil,
-			func(*Result) error {
-				if dataCenter.find(ents[0].data) != nil {
+			input: []Keyer{ents[0]},
+			checker: func(s *Storage) error {
+				if s.data[ents[0].data] != nil {
 					return errors.New("remove exist one: not remove\n")
 				}
-				if dataCenter.find(ents[2].data) != ents[2] {
+				if s.data[ents[2].data] != ents[2] {
 					return errors.New("remove exist one: remove another\n")
 				}
 				return nil
 			},
 		},
-		{
-			nil,
-			[]interface{}{ents[0]},
-			nil,
-			func(*Result) error {
-				if dataCenter.find(ents[0].data) != nil {
+		"removeNotExist": {
+			input: []Keyer{ents[0]},
+			checker: func(s *Storage) error {
+				if s.data[ents[0].data] != nil {
 					return errors.New("remove no exist one: not remove\n")
 				}
 				return nil
 			},
 		},
-	}
-	for _, c := range cases {
-		dataCenter.reset()
-		if c.prepare != nil {
-			if err := c.prepare(); err != nil {
+	} {
+		c := c
+		t.Run(name, func(t *testing.T) {
+			s, err := New("./testdata/repos.json")
+			if err != nil {
 				t.Fatal(err)
 			}
-		}
-		inputs := make([]Keyer, len(c.input))
-		for i, v := range c.input {
-			inputs[i] = v.(Keyer)
-		}
-		if e := matchError(c.err, Remove(inputs...)); e != nil {
-			t.Fatal(e)
-		}
-		if c.checker != nil {
-			if err := c.checker(nil); err != nil {
+			if c.prepare != nil {
+				if err = c.prepare(s); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err = s.Remove(c.input...); err != nil {
 				t.Fatal(err)
 			}
-		}
+			if err = c.checker(s); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
-func TestGet(t *testing.T) {
-	cases := []testCase{
-		// get
-		{
-			func() error {
-				if err := Add(ents[0], ents[1], ents[2]); err != nil {
+func TestStorageGet(t *testing.T) {
+	for name, c := range map[string]struct {
+		prepare   func(*Storage) error
+		input     []Keyer
+		expectErr error
+		checker   func(*Result) error
+	}{
+		"getAll": {
+			prepare: func(s *Storage) error {
+				if err := s.Add(ents[0], ents[1], ents[2]); err != nil {
 					return err
 				}
 				return nil
 			},
-			[]interface{}{},
-			nil,
-			func(r *Result) error {
+			input: []Keyer{},
+			checker: func(r *Result) error {
 				if len(r.Content) != 2 {
 					return fmt.Errorf("get all: result len(%d) != expect(%d)\n",
 						len(r.Content), 2)
 				}
-				if err := compareTwo(ents[1:], r.Content); err != nil {
-					return err
+				sort.Sort(r)
+				if r.Content[0] != ents[2] ||
+					r.Content[1] != ents[1] {
+					return fmt.Errorf("not expected result: %#v\n", r)
 				}
 				return nil
 			},
 		},
 
-		{
-			func() error {
-				if err := Add(ents[0], ents[1]); err != nil {
+		"getOne": {
+			prepare: func(s *Storage) error {
+				if err := s.Add(ents[0], ents[1]); err != nil {
 					return err
 				}
 				return nil
 			},
-			[]interface{}{ents[0]},
-			nil,
-			func(r *Result) error {
+			input: []Keyer{ents[0]},
+			checker: func(r *Result) error {
 				if len(r.Content) != 1 {
 					return fmt.Errorf("get some: result len(%d) != expect(%d)\n",
 						len(r.Content), 1)
@@ -263,16 +220,15 @@ func TestGet(t *testing.T) {
 			},
 		},
 
-		{
-			func() error {
-				if err := Add(ents[0], ents[1]); err != nil {
+		"getTwo": {
+			prepare: func(s *Storage) error {
+				if err := s.Add(ents[0], ents[1]); err != nil {
 					return err
 				}
 				return nil
 			},
-			[]interface{}{ents[0], ents[1]},
-			nil,
-			func(r *Result) error {
+			input: []Keyer{ents[0], ents[1]},
+			checker: func(r *Result) error {
 				if len(r.Content) != 2 {
 					return fmt.Errorf("get some: result len(%d) != expect(%d)\n",
 						len(r.Content), 2)
@@ -284,43 +240,42 @@ func TestGet(t *testing.T) {
 			},
 		},
 
-		{
-			func() error {
-				if err := Add(ents[0], ents[1]); err != nil {
+		"getNotExist": {
+			prepare: func(s *Storage) error {
+				if err := s.Add(ents[0], ents[1]); err != nil {
 					return err
 				}
 				return nil
 			},
-			[]interface{}{ents[0], ents[2]},
-			noFound,
-			func(r *Result) error {
+			input:     []Keyer{ents[0], ents[2]},
+			expectErr: noFound,
+			checker: func(r *Result) error {
 				if r != nil {
 					return errors.New("add some: result should be nil\n")
 				}
 				return nil
 			},
 		},
-	}
-	for _, c := range cases {
-		dataCenter.reset()
-		if c.prepare != nil {
-			if err := c.prepare(); err != nil {
+	} {
+		c := c
+		t.Run(name, func(t *testing.T) {
+			s, err := New("./testdata/repos.json")
+			if err != nil {
 				t.Fatal(err)
 			}
-		}
-		inputs := make([]Keyer, len(c.input))
-		for i, v := range c.input {
-			inputs[i] = v.(Keyer)
-		}
-		result, err := Get(inputs...)
-		if e := matchError(c.err, err); e != nil {
-			t.Fatal(e)
-		}
-		if c.checker != nil {
-			if err := c.checker(result); err != nil {
+			if c.prepare != nil {
+				if err = c.prepare(s); err != nil {
+					t.Fatal(err)
+				}
+			}
+			r, err := s.Get(c.input...)
+			if err != c.expectErr {
+				t.Fatalf("expect error: %v, but got %v\n", c.expectErr, err)
+			}
+			if err = c.checker(r); err != nil {
 				t.Fatal(err)
 			}
-		}
+		})
 	}
 }
 
@@ -340,7 +295,10 @@ check:
 
 func BenchmarkAddUpdate(b *testing.B) {
 	b.StopTimer()
-	dataCenter.reset()
+	s, err := New("./testdata/repos.json")
+	if err != nil {
+		b.Fatal(err)
+	}
 	waiter := &sync.WaitGroup{}
 	b.StartTimer()
 
@@ -348,7 +306,7 @@ func BenchmarkAddUpdate(b *testing.B) {
 		waiter.Add(3)
 		for j := 0; j < 3; j++ {
 			go func(j int) {
-				Add(ents[j])
+				s.Add(ents[j])
 				waiter.Done()
 			}(j)
 		}
@@ -358,7 +316,10 @@ func BenchmarkAddUpdate(b *testing.B) {
 
 func BenchmarkAddRemove(b *testing.B) {
 	b.StopTimer()
-	dataCenter.reset()
+	s, err := New("./testdata/repos.json")
+	if err != nil {
+		b.Fatal(err)
+	}
 	waiter := &sync.WaitGroup{}
 	b.StartTimer()
 
@@ -366,8 +327,8 @@ func BenchmarkAddRemove(b *testing.B) {
 		waiter.Add(3)
 		for j := 0; j < 3; j++ {
 			go func(j int) {
-				Add(ents[j])
-				Remove(ents[j])
+				s.Add(ents[j])
+				s.Remove(ents[j])
 				waiter.Done()
 			}(j)
 		}
@@ -377,10 +338,13 @@ func BenchmarkAddRemove(b *testing.B) {
 
 func BenchmarkGet(b *testing.B) {
 	b.StopTimer()
-	dataCenter.reset()
-	Add(ents[0])
-	Add(ents[1])
-	Add(ents[2])
+	s, err := New("./testdata/repos.json")
+	if err != nil {
+		b.Fatal(err)
+	}
+	s.Add(ents[0])
+	s.Add(ents[1])
+	s.Add(ents[2])
 	waiter := &sync.WaitGroup{}
 	b.StartTimer()
 
@@ -388,7 +352,7 @@ func BenchmarkGet(b *testing.B) {
 		waiter.Add(3)
 		for j := 0; j < 3; j++ {
 			go func(j int) {
-				Get(ents[j])
+				s.Get(ents[j])
 				waiter.Done()
 			}(j)
 		}
@@ -398,7 +362,10 @@ func BenchmarkGet(b *testing.B) {
 
 func BenchmarkAll(b *testing.B) {
 	b.StopTimer()
-	dataCenter.reset()
+	s, err := New("./testdata/repos.json")
+	if err != nil {
+		b.Fatal(err)
+	}
 	waiter := &sync.WaitGroup{}
 	b.StartTimer()
 
@@ -406,10 +373,10 @@ func BenchmarkAll(b *testing.B) {
 		waiter.Add(3)
 		for j := 0; j < 3; j++ {
 			go func(j int) {
-				Add(ents[j])
-				Get(ents[j])
-				Add(ents[j])
-				Remove(ents[j])
+				s.Add(ents[j])
+				s.Get(ents[j])
+				s.Add(ents[j])
+				s.Remove(ents[j])
 				waiter.Done()
 			}(j)
 		}
