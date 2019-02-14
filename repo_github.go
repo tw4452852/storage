@@ -1,21 +1,16 @@
 package storage
 
 import (
-	"encoding/base64"
+	"context"
 	"errors"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"path"
-	rdebug "runtime/debug"
 	"sort"
-	"strings"
-	"sync"
-	"time"
 
-	ghc "github.com/alcacoop/go-github-client/client"
+	"github.com/google/go-github/github"
+	"github.com/gregjones/httpcache"
 )
 
 func init() {
@@ -25,127 +20,11 @@ func init() {
 var nilError = errors.New("nil error")
 
 type githubRepo struct {
-	client *githubClient
-	name   string
-	user   string
-	posts  map[string]*githubPost
-}
-
-// A wrapper of *ghc.GithubClient
-// Used to avoid the exceed the limit
-type githubClient struct {
-	lock  sync.RWMutex
-	cache map[string]*githubResource
-	*ghc.GithubClient
-}
-
-// githubResource represet a github content
-// according to the url, etag used for a
-// conditional request
-type githubResource struct {
-	ghc.JsonMap
-	etag string
-}
-
-func newGithubClient(client *ghc.GithubClient) *githubClient {
-	gc := &githubClient{
-		cache:        make(map[string]*githubResource),
-		GithubClient: client,
-	}
-	go gc.refresh()
-	return gc
-}
-
-// refresh periodically the cache
-func (gc *githubClient) refresh() {
-	timer := time.NewTicker(1 * time.Minute)
-	for range timer.C {
-		for url := range gc.cache {
-			gr, err := execApi(gc, url, true)
-			if err != nil {
-				log.Printf("refresh github post(%s) failed: %s\n",
-					url, err)
-				continue
-			}
-			if err == nil && gr == nil {
-				// nothing to be updated
-				continue
-			}
-			gc.lock.Lock()
-			gc.cache[url] = gr
-			gc.lock.Unlock()
-		}
-	}
-}
-
-// get the appointed resource according to the url
-// If there is a cache, just return it, otherwise,
-// emit a api request and update the cache
-// if it is a conditional request, return nil, nil when succeed
-func (gc *githubClient) get(url string) (ghc.JsonMap, error) {
-	gc.lock.RLock()
-	gr, found := gc.cache[url]
-	if found {
-		gc.lock.RUnlock()
-		return gr.JsonMap, nil
-	}
-	// if not found, release the Rlock first,
-	// prepare to emit a api request
-	gc.lock.RUnlock()
-	gr, err := execApi(gc, url, false)
-	if err != nil {
-		return nil, err
-	}
-	// save result into cache
-	gc.lock.Lock()
-	defer gc.lock.Unlock()
-	gc.cache[url] = gr
-	return gr.JsonMap, nil
-}
-
-func execApi(client *githubClient, url string, isCondition bool) (gr *githubResource, err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			log.Printf("execApi panic recovered: %s\n%s\n", e, rdebug.Stack())
-			err = fmt.Errorf("%s", e)
-		}
-	}()
-
-	req, err := client.NewAPIRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	if isCondition {
-		etag := client.cache[url].etag
-		if etag == "" {
-			return nil,
-				fmt.Errorf("there is no etag for condition request(%s)", url)
-		}
-		req.Header.Set("If-None-Match", etag)
-	}
-	res, err := client.RunRequest(req, new(http.Client))
-	if err != nil {
-		return nil, err
-	}
-
-	// check if nothing is modified
-	if isCondition &&
-		res.RawHttpResponse.Status == "304 Not Modified" {
-		return nil, nil
-	}
-
-	etag := res.RawHttpResponse.Header.Get("ETag")
-	if etag == "" {
-		return nil, errors.New("ETag is null")
-	}
-	m, err := res.JsonMap()
-	if err != nil {
-		return nil, err
-	}
-	return &githubResource{
-		JsonMap: m,
-		etag:    etag,
-	}, nil
+	client   *github.Client
+	owner    string
+	name     string
+	posts    map[string]*githubPost
+	lastSHA1 string
 }
 
 func newGithubRepo(name string) (Repository, error) {
@@ -158,13 +37,13 @@ func newGithubRepo(name string) (Repository, error) {
 // Implement the Repository interface
 func (gr *githubRepo) Install(user, password string) error {
 	// TODO:	oauth2
-	client, err := ghc.NewGithubClient(user, password,
-		ghc.AUTH_USER_PASSWORD)
-	if err != nil {
-		return err
-	}
-	gr.client = newGithubClient(client)
-	gr.user = user
+	gr.client = github.NewClient(&http.Client{
+		Transport: &github.BasicAuthTransport{
+			Username:  user,
+			Password:  password,
+			Transport: httpcache.NewMemoryCacheTransport(),
+		}})
+	gr.owner = user
 	return nil
 }
 
@@ -176,55 +55,38 @@ func (gr *githubRepo) Uninstall(s Storager) {
 	}
 	if err := s.Remove(cleans...); err != nil {
 		log.Printf("remove all the posts in github repo(%s/%s) failed: %s\n",
-			gr.user, gr.name, err)
+			gr.owner, gr.name, err)
 	}
 }
 
 func (gr *githubRepo) Refresh(s Storager) {
-	// get the master branch post list
-	// 1.get master branch tree sha
-	// 2.filter tree to get support file
-	// if there is some error happened, just abort and do nothing
-	master, err := gr.client.get(
-		"repos/" + gr.user + "/" + gr.name + "/branches/master")
+	// get master's sha1
+	sha1, res, err := gr.client.Repositories.GetCommitSHA1(context.Background(), gr.owner, gr.name, "master", gr.lastSHA1)
 	if err != nil {
-		log.Println(err)
+		log.Printf("failed to get SHA1 of master: error[%#v], res[%#v]\n", err, res)
 		return
 	}
-	c := master.GetMap("commit")
-	if c == nil {
-		log.Println(nilError, master)
+	// skip Refresh if there's nothing new
+	if sha1 == gr.lastSHA1 {
 		return
 	}
-	cc := c.GetMap("commit")
-	if cc == nil {
-		log.Println(nilError, c)
-		return
-	}
-	t := cc.GetMap("tree")
-	if c == nil {
-		log.Println(nilError, cc)
-		return
-	}
-	sha := t.GetString("sha")
-	if sha == "" {
-		log.Println(nilError, cc)
-		return
-	}
-	tree, err := gr.client.get(
-		"repos/" + gr.user + "/" + gr.name + "/git/trees/" + sha + "?recursive=1")
+	// get that commit according to the sha1
+	commit, res, err := gr.client.Repositories.GetCommit(context.Background(), gr.owner, gr.name, sha1)
 	if err != nil {
-		log.Println(err)
+		log.Printf("failed to get commit of master: error[%#v], res[%#v]\n", err, res)
 		return
 	}
-	treeArray := tree.GetArray("tree")
-	if treeArray == nil {
-		log.Println(nilError, tree)
+	// get all the files according to tree's sha1
+	treeSha1 := commit.GetCommit().GetTree().GetSHA()
+	tree, res, err := gr.client.Git.GetTree(context.Background(), gr.owner, gr.name, treeSha1, true)
+	if err != nil {
+		log.Printf("failed to get tree of master: error[%#v], res[%#v]\n", err, res)
 		return
 	}
+	treeArray := tree.Entries
 	paths := make([]string, 0)
 	for i := range treeArray {
-		path := treeArray.GetObject(i).GetString("path")
+		path := treeArray[i].GetPath()
 		if FindGenerator(path) == nil {
 			continue
 		}
@@ -235,6 +97,8 @@ func (gr *githubRepo) Refresh(s Storager) {
 	gr.clean(s, paths)
 	// add new post and update the exist ones
 	gr.update(s, paths)
+
+	gr.lastSHA1 = sha1
 }
 
 // the paths has been sorted in increasing order
@@ -270,23 +134,11 @@ func (gr *githubRepo) update(s Storager, paths []string) {
 	}
 }
 
-func (gr *githubRepo) static(path string) io.Reader {
-	m, err := gr.client.get(
-		"repos/" + gr.user + "/" + gr.name + "/contents/" + path)
-	if err != nil {
-		return StaticErr(fmt.Sprintf("get static file %q failed: %s\n",
-			path, err))
-	}
-	return base64.NewDecoder(base64.StdEncoding,
-		strings.NewReader(strings.Replace(m.GetString("content"), "\n", "", -1)))
-}
-
 type githubPost struct {
 	Poster
-	repo    *githubRepo
-	path    string
-	gen     Generator
-	lastSha string
+	repo *githubRepo
+	path string
+	gen  Generator
 }
 
 func newGithubPost(path string, repo *githubRepo) *githubPost {
@@ -298,20 +150,12 @@ func newGithubPost(path string, repo *githubRepo) *githubPost {
 }
 
 func (gp *githubPost) update(s Storager) error {
-	ms, err := gp.repo.client.get(
-		"repos/" + gp.repo.user + "/" + gp.repo.name + "/contents/" + gp.path)
+	rc, err := gp.repo.client.Repositories.DownloadContents(context.Background(), gp.repo.owner, gp.repo.name, gp.path, nil)
 	if err != nil {
 		return err
 	}
-	sha, encodedContent := ms.GetString("sha"), ms.GetString("content")
-	if sha == gp.lastSha {
-		// no need to update
-		return nil
-	}
-	encodedContent = strings.Replace(encodedContent, "\n", "", -1)
 
-	p, err := gp.gen.Generate(base64.NewDecoder(base64.StdEncoding,
-		strings.NewReader(encodedContent)), gp)
+	p, err := gp.gen.Generate(rc, gp)
 	if err != nil {
 		return err
 	}
@@ -329,14 +173,15 @@ func (gp *githubPost) update(s Storager) error {
 		return err
 	}
 	dprintf("update a github post(%s)\n", gp.path)
-
-	// update sha
-	gp.lastSha = sha
-
 	return nil
 }
 
 func (gp *githubPost) Static(p string) io.ReadCloser {
 	p = path.Join(path.Dir(gp.path), p)
-	return ioutil.NopCloser(gp.repo.static(p))
+	rc, err := gp.repo.client.Repositories.DownloadContents(context.Background(), gp.repo.owner, gp.repo.name, p, nil)
+	if err != nil {
+		log.Printf("failed to get static resource[%s]: %v\n", p, err)
+		return nil
+	}
+	return rc
 }
