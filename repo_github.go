@@ -9,7 +9,7 @@ import (
 	"path"
 	"sort"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v29/github"
 	"github.com/gregjones/httpcache"
 )
 
