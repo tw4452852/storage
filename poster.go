@@ -5,12 +5,6 @@ import (
 	"time"
 )
 
-// Keyer represent a key to post
-type Keyer interface {
-	// key returns a strong for a key
-	Key() string
-}
-
 // Staticer represent a handler for static resources (e.g. images)
 type Staticer interface {
 	// Static receives a path of a source and returns its contents
